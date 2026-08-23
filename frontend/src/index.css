@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* Paleta de colores AVI */
+@theme {
+  --color-avi-white: #ffffff;
+  --color-avi-mint: #deefe7;
+  --color-avi-dark: #002333;
+  --color-avi-teal: #159a9c;
+  --color-avi-gray: #b4bec9;
+}
+
+/* Estilos base */
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, sans-serif;
+  background-color: var(--color-avi-white);
+  color: var(--color-avi-dark);
+}
+
+/* Animaciones personalizadas */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-avi-mint);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-avi-teal);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-avi-dark);
+}

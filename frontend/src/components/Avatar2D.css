@@ -1,0 +1,449 @@
+/**
+ * Estilos para el Avatar 2D Animado
+ */
+
+/* Contenedor principal */
+.avatar-container {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Fondo con gradiente */
+.avatar-background {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #e8f4f8 0%, #deefe7 50%, #e8f4f8 100%);
+  z-index: 0;
+}
+
+/* Partículas decorativas */
+.particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(135deg, #159a9c, #20b2b4);
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: float 6s ease-in-out infinite;
+}
+
+.particle-1 {
+  top: 10%;
+  left: 15%;
+  animation-delay: 0s;
+}
+.particle-2 {
+  top: 20%;
+  right: 20%;
+  animation-delay: 1s;
+  width: 8px;
+  height: 8px;
+}
+.particle-3 {
+  top: 60%;
+  left: 10%;
+  animation-delay: 2s;
+  width: 10px;
+  height: 10px;
+}
+.particle-4 {
+  top: 70%;
+  right: 15%;
+  animation-delay: 3s;
+}
+.particle-5 {
+  top: 40%;
+  left: 5%;
+  animation-delay: 4s;
+  width: 6px;
+  height: 6px;
+}
+.particle-6 {
+  top: 30%;
+  right: 8%;
+  animation-delay: 5s;
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-20px) scale(1.1);
+    opacity: 0.6;
+  }
+}
+
+/* Wrapper del avatar */
+.avatar-wrapper {
+  position: relative;
+  z-index: 1;
+  animation: idle-bounce 3s ease-in-out infinite;
+  filter: drop-shadow(0 10px 20px rgba(0, 35, 51, 0.15));
+}
+
+.avatar-wrapper.speaking {
+  animation: speaking-bounce 0.5s ease-in-out infinite;
+}
+
+@keyframes idle-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes speaking-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.01);
+  }
+}
+
+/* SVG del avatar */
+.avatar-svg {
+  width: auto;
+  height: 100%;
+  max-height: 350px;
+}
+
+/* ====== ANIMACIONES DE CABELLO ====== */
+.hair-strand {
+  transform-origin: center bottom;
+  animation: hair-wave 4s ease-in-out infinite;
+}
+
+.strand-1 {
+  animation-delay: 0s;
+}
+.strand-2 {
+  animation-delay: 0.5s;
+}
+.strand-3 {
+  animation-delay: 1s;
+}
+
+.hair-side {
+  animation: hair-side-wave 3s ease-in-out infinite;
+}
+
+.hair-side.left {
+  animation-delay: 0.3s;
+}
+.hair-side.right {
+  animation-delay: 0.6s;
+}
+
+@keyframes hair-wave {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(2deg);
+  }
+  75% {
+    transform: rotate(-2deg);
+  }
+}
+
+@keyframes hair-side-wave {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(1.05);
+  }
+}
+
+/* ====== ANIMACIONES DE OJOS ====== */
+.eyes .eyelid {
+  transform-origin: center;
+  transform: scaleY(0);
+  transition: transform 0.1s ease;
+}
+
+.eyes.blink .eyelid {
+  transform: scaleY(1);
+}
+
+.eyes.happy .eye {
+  transform: scaleY(0.7);
+}
+
+.eyes.thinking .left-eye .iris,
+.eyes.thinking .left-eye .pupil,
+.eyes.thinking .right-eye .iris,
+.eyes.thinking .right-eye .pupil {
+  transform: translateX(-3px);
+}
+
+.eyes.excited .eye {
+  animation: excited-eyes 0.3s ease-in-out infinite;
+}
+
+@keyframes excited-eyes {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Animación de mirada */
+.iris,
+.pupil {
+  animation: look-around 8s ease-in-out infinite;
+}
+
+@keyframes look-around {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(2px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
+
+/* ====== ANIMACIONES DE CEJAS ====== */
+.eyebrows.feliz .left-eyebrow {
+  transform: rotate(-5deg) translateY(-3px);
+}
+.eyebrows.feliz .right-eyebrow {
+  transform: rotate(5deg) translateY(-3px);
+}
+
+.eyebrows.pensativo .left-eyebrow {
+  transform: rotate(10deg);
+}
+.eyebrows.pensativo .right-eyebrow {
+  transform: rotate(-10deg);
+}
+
+.eyebrows.animando .eyebrow {
+  animation: excited-brows 0.3s ease-in-out infinite;
+}
+
+@keyframes excited-brows {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.eyebrow {
+  transition: transform 0.3s ease;
+}
+
+/* ====== ANIMACIONES DE BOCA ====== */
+.mouth .mouth-shape {
+  transition: d 0.1s ease;
+}
+
+.mouth .mouth-interior {
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+/* Boca neutral */
+.mouth.neutral .mouth-shape {
+  d: path("M85 158 Q100 165 115 158");
+}
+
+/* Sonrisa */
+.mouth.smile .mouth-shape {
+  d: path("M80 155 Q100 175 120 155");
+}
+
+/* Sonrisa grande */
+.mouth.big-smile .mouth-shape {
+  d: path("M75 152 Q100 180 125 152 Q100 170 75 152");
+}
+.mouth.big-smile .mouth-interior {
+  opacity: 1;
+  rx: 12;
+  ry: 8;
+}
+
+/* Pensativo */
+.mouth.thinking .mouth-shape {
+  d: path("M90 160 Q100 158 110 160");
+}
+
+/* Hablando - Frame 1 */
+.mouth.speak-1 .mouth-shape {
+  d: path("M85 155 Q100 165 115 155 Q100 175 85 155");
+}
+.mouth.speak-1 .mouth-interior {
+  opacity: 1;
+  rx: 8;
+  ry: 6;
+}
+
+/* Hablando - Frame 2 */
+.mouth.speak-2 .mouth-shape {
+  d: path("M80 157 Q100 175 120 157 Q100 180 80 157");
+}
+.mouth.speak-2 .mouth-interior {
+  opacity: 1;
+  rx: 12;
+  ry: 10;
+}
+
+/* Hablando - Frame 3 */
+.mouth.speak-3 .mouth-shape {
+  d: path("M82 155 Q100 180 118 155 Q100 185 82 155");
+}
+.mouth.speak-3 .mouth-interior {
+  opacity: 1;
+  rx: 15;
+  ry: 12;
+}
+
+/* ====== MENSAJE DEL AVATAR ====== */
+.avatar-message {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  animation: message-appear 0.3s ease-out;
+}
+
+.message-bubble {
+  background: white;
+  padding: 12px 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 35, 51, 0.15);
+  border: 1px solid rgba(21, 154, 156, 0.2);
+  max-width: 280px;
+  text-align: center;
+  position: relative;
+}
+
+.message-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-right: 1px solid rgba(21, 154, 156, 0.2);
+  border-bottom: 1px solid rgba(21, 154, 156, 0.2);
+}
+
+.message-bubble p {
+  margin: 0;
+  font-size: 14px;
+  color: #002333;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+@keyframes message-appear {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ====== INDICADOR DE ESTADO ====== */
+.avatar-status {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 15px rgba(0, 35, 51, 0.1);
+  z-index: 10;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #b4bec9;
+  transition: all 0.3s ease;
+}
+
+.status-dot.active {
+  background: #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+.avatar-status span {
+  font-size: 13px;
+  font-weight: 500;
+  color: #002333;
+}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 768px) {
+  .avatar-svg {
+    max-height: 280px;
+  }
+
+  .message-bubble {
+    max-width: 220px;
+    padding: 10px 16px;
+  }
+
+  .message-bubble p {
+    font-size: 13px;
+  }
+}
