@@ -1,20 +1,54 @@
 @import "tailwindcss";
 
-/* Paleta de colores AVI */
+/* ============================================================
+   MasterKey — Sistema de diseño
+   Azul Oxford (marca) + Oro Eléctrico (acción) sobre superficies claras.
+   Sin gradientes: color plano, jerarquía por borde y tipografía.
+   ============================================================ */
 @theme {
-  --color-avi-white: #ffffff;
-  --color-avi-mint: #deefe7;
-  --color-avi-dark: #002333;
-  --color-avi-teal: #159a9c;
-  --color-avi-gray: #b4bec9;
+  /* Marca */
+  --color-mk-blue: #1e3a8a;
+  --color-mk-blue-dark: #172f6f;
+  --color-mk-blue-soft: #eef2ff;
+
+  /* Acción */
+  --color-mk-gold: #f59e0b;
+  --color-mk-gold-dark: #d97706;
+  --color-mk-gold-soft: #fef3c7;
+
+  /* Superficies */
+  --color-mk-ice: #f8fafc;
+  --color-mk-surface: #ffffff;
+  --color-mk-line: #e2e8f0;
+
+  /* Texto */
+  --color-mk-ink: #0f172a;
+  --color-mk-muted: #475569;
+
+  /* Estados */
+  --color-mk-success: #10b981;
+  --color-mk-success-bg: #ecfdf5;
+  --color-mk-error: #ef4444;
+  --color-mk-error-bg: #fef2f2;
+  --color-mk-streak-bg: #fef3c7;
+  --color-mk-streak-ink: #b45309;
+
+  /* Tipografía */
+  --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
 }
+
+/* Convención de radios (geometría contenida, nada de píldoras):
+   rounded-md  (6px) → controles: botones, inputs, chips, avatares
+   rounded-lg  (8px) → paneles: tarjetas, modales, menús          */
 
 /* Estilos base */
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Oxygen, Ubuntu, sans-serif;
-  background-color: var(--color-avi-white);
-  color: var(--color-avi-dark);
+  font-family: var(--font-sans);
+  background-color: var(--color-mk-ice);
+  color: var(--color-mk-ink);
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Animaciones personalizadas */
@@ -51,27 +85,35 @@ body {
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.24s ease-out;
 }
 
 .animate-slideIn {
-  animation: slideIn 0.3s ease-out;
+  animation: slideIn 0.24s ease-out;
 }
 
-/* Scrollbar personalizado */
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-avi-mint);
+  background: var(--color-mk-ice);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-avi-teal);
-  border-radius: 4px;
+  background: var(--color-mk-line);
+  border-radius: 6px;
+  border: 2px solid var(--color-mk-ice);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-avi-dark);
+  background: #cbd5e1;
+}
+
+/* Foco visible y consistente en toda la app */
+:focus-visible {
+  outline: 2px solid var(--color-mk-blue);
+  outline-offset: 2px;
 }

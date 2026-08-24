@@ -1,28 +1,34 @@
 /**
- * Página de Sesiones - Con Avatar 2D Animado
+ * Sesiones — MasterKey
+ * Lista de sesiones, selección de tema y sesión activa con el avatar.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useAuth } from '../context/AuthContext';
-import Avatar2D from '../components/Avatar2D';
-import { 
-  MessageSquare, 
-  Plus, 
-  Play, 
-  Pause, 
-  Square, 
-  Mic, 
+import {
+  MessageSquare,
+  Plus,
+  Play,
+  Pause,
+  Mic,
   MicOff,
   Send,
   Clock,
-  Award,
   ChevronRight,
   X,
   Volume2,
   VolumeX,
   RefreshCw,
-  CheckCircle,
-  AlertCircle
+  Handshake,
+  UtensilsCrossed,
+  Briefcase,
+  Plane,
+  Phone,
+  MessagesSquare
 } from 'lucide-react';
+
+// El runtime de Rive y el .riv solo se descargan al entrar a una sesión,
+// no en cada carga del dashboard.
+const Avatar = lazy(() => import('../components/Avatar'));
 
 export default function Sesiones() {
   const { user } = useAuth();
@@ -40,6 +46,7 @@ export default function Sesiones() {
   const [currentPhrase, setCurrentPhrase] = useState(null);
   const [score, setScore] = useState(0);
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
+  const conversationEndRef = useRef(null);
 
   // Datos de demo para sesiones
   const sesionesDemo = [
@@ -77,21 +84,63 @@ export default function Sesiones() {
 
   // Temas disponibles para nueva sesión
   const temasDisponibles = [
-    { id: 1, nombre: 'Saludos y Presentaciones', nivel: 'A1', descripcion: 'Aprende a saludar y presentarte en inglés', icono: '👋' },
-    { id: 2, nombre: 'En el Restaurante', nivel: 'A2', descripcion: 'Vocabulario para ordenar comida', icono: '🍽️' },
-    { id: 3, nombre: 'Entrevista de Trabajo', nivel: 'B1', descripcion: 'Prepárate para entrevistas laborales', icono: '💼' },
-    { id: 4, nombre: 'Viajes y Aeropuerto', nivel: 'B1', descripcion: 'Situaciones comunes al viajar', icono: '✈️' },
-    { id: 5, nombre: 'Conversación Telefónica', nivel: 'B2', descripcion: 'Habla por teléfono con confianza', icono: '📞' },
-    { id: 6, nombre: 'Debate y Opiniones', nivel: 'C1', descripcion: 'Expresa y defiende tus ideas', icono: '💬' }
+    {
+      id: 1,
+      nombre: 'Saludos y Presentaciones',
+      nivel: 'A1',
+      descripcion: 'Aprende a saludar y presentarte en inglés',
+      Icono: Handshake
+    },
+    {
+      id: 2,
+      nombre: 'En el Restaurante',
+      nivel: 'A2',
+      descripcion: 'Vocabulario para ordenar comida',
+      Icono: UtensilsCrossed
+    },
+    {
+      id: 3,
+      nombre: 'Entrevista de Trabajo',
+      nivel: 'B1',
+      descripcion: 'Prepárate para entrevistas laborales',
+      Icono: Briefcase
+    },
+    {
+      id: 4,
+      nombre: 'Viajes y Aeropuerto',
+      nivel: 'B1',
+      descripcion: 'Situaciones comunes al viajar',
+      Icono: Plane
+    },
+    {
+      id: 5,
+      nombre: 'Conversación Telefónica',
+      nivel: 'B2',
+      descripcion: 'Habla por teléfono con confianza',
+      Icono: Phone
+    },
+    {
+      id: 6,
+      nombre: 'Debate y Opiniones',
+      nivel: 'C1',
+      descripcion: 'Expresa y defiende tus ideas',
+      Icono: MessagesSquare
+    }
   ];
 
   // Frases de práctica de demo
   const frasesDemo = [
-    { texto: "Hello, how are you today?", traduccion: "Hola, ¿cómo estás hoy?" },
-    { texto: "Nice to meet you!", traduccion: "¡Mucho gusto en conocerte!" },
-    { texto: "Could you please repeat that?", traduccion: "¿Podrías repetir eso por favor?" },
-    { texto: "I would like to order a coffee.", traduccion: "Me gustaría pedir un café." },
-    { texto: "Thank you very much!", traduccion: "¡Muchas gracias!" }
+    { texto: 'Hello, how are you today?', traduccion: 'Hola, ¿cómo estás hoy?' },
+    { texto: 'Nice to meet you!', traduccion: '¡Mucho gusto en conocerte!' },
+    {
+      texto: 'Could you please repeat that?',
+      traduccion: '¿Podrías repetir eso por favor?'
+    },
+    {
+      texto: 'I would like to order a coffee.',
+      traduccion: 'Me gustaría pedir un café.'
+    },
+    { texto: 'Thank you very much!', traduccion: '¡Muchas gracias!' }
   ];
 
   // Timer de sesión
@@ -99,17 +148,29 @@ export default function Sesiones() {
     let interval;
     if (sesionActiva && !isPaused) {
       interval = setInterval(() => {
-        setSessionTime(prev => prev + 1);
+        setSessionTime((prev) => prev + 1);
       }, 1000);
     }
     return () => clearInterval(interval);
   }, [sesionActiva, isPaused]);
+
+  // Mantener la conversación desplazada al último mensaje
+  useEffect(() => {
+    conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [conversation]);
 
   // Formatear tiempo
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Color del indicador de puntuación
+  const estiloPuntuacion = (valor) => {
+    if (valor >= 85) return 'bg-mk-success-bg text-mk-success';
+    if (valor >= 70) return 'bg-mk-streak-bg text-mk-streak-ink';
+    return 'bg-mk-error-bg text-mk-error';
   };
 
   // Iniciar nueva sesión
@@ -125,13 +186,15 @@ export default function Sesiones() {
     setScore(0);
     setConversation([]);
     setShowNewSessionModal(false);
-    
+
     // Mensaje inicial del avatar
     setTimeout(() => {
       setAvatarEmotion('feliz');
-      setAvatarMessage("¡Hola! Soy AVI, tu asistente de inglés. ¿Listo para practicar?");
+      setAvatarMessage(
+        `¡Hola${user?.nombre ? ', ' + user.nombre : ''}! Soy tu tutor de MasterKey. ¿Listo para practicar?`
+      );
       setIsSpeaking(true);
-      
+
       setTimeout(() => {
         setIsSpeaking(false);
         setAvatarMessage('');
@@ -147,7 +210,7 @@ export default function Sesiones() {
     setAvatarEmotion('neutral');
     setAvatarMessage(`Repite: "${randomFrase.texto}"`);
     setIsSpeaking(true);
-    
+
     setTimeout(() => {
       setIsSpeaking(false);
     }, 2000);
@@ -158,38 +221,46 @@ export default function Sesiones() {
     if (!userInput.trim()) return;
 
     // Agregar mensaje del usuario a la conversación
-    setConversation(prev => [...prev, {
-      tipo: 'usuario',
-      texto: userInput,
-      timestamp: new Date()
-    }]);
+    setConversation((prev) => [
+      ...prev,
+      {
+        tipo: 'usuario',
+        texto: userInput,
+        timestamp: new Date()
+      }
+    ]);
 
-    // Simular evaluación
-    const puntuacion = Math.floor(Math.random() * 30) + 70; // 70-100
-    setScore(prev => Math.round((prev + puntuacion) / 2) || puntuacion);
+    // Simular evaluación (rango amplio a propósito: con el 70-100 anterior
+    // la puntuación nunca bajaba de 70 y el estado "triste" del avatar
+    // jamás se disparaba en la demo)
+    const puntuacion = Math.floor(Math.random() * 61) + 40; // 40-100
+    setScore((prev) => Math.round((prev + puntuacion) / 2) || puntuacion);
 
     // Respuesta del avatar
     setTimeout(() => {
       let respuesta = '';
       let emocion = 'neutral';
 
-      if (puntuacion >= 90) {
-        respuesta = "¡Excelente pronunciación! 🌟 You did great!";
-        emocion = 'feliz';
-      } else if (puntuacion >= 75) {
-        respuesta = "¡Muy bien! Good job, keep practicing!";
+      if (puntuacion === 100) {
+        respuesta = '¡Perfecto! Pronunciación exacta, 100%!';
+        emocion = 'superFeliz';
+      } else if (puntuacion >= 80) {
+        respuesta = '¡Muy bien! Good job, keep practicing!';
         emocion = 'feliz';
       } else {
-        respuesta = "Good try! Let's practice that again.";
-        emocion = 'animando';
+        respuesta = 'No salió del todo bien. Intentemos de nuevo.';
+        emocion = 'triste';
       }
 
-      setConversation(prev => [...prev, {
-        tipo: 'agente',
-        texto: respuesta,
-        puntuacion: puntuacion,
-        timestamp: new Date()
-      }]);
+      setConversation((prev) => [
+        ...prev,
+        {
+          tipo: 'agente',
+          texto: respuesta,
+          puntuacion: puntuacion,
+          timestamp: new Date()
+        }
+      ]);
 
       setAvatarEmotion(emocion);
       setAvatarMessage(respuesta);
@@ -208,7 +279,7 @@ export default function Sesiones() {
   // Simular grabación de voz
   const toggleRecording = () => {
     setIsRecording(!isRecording);
-    
+
     if (!isRecording) {
       // Simular transcripción después de 2 segundos
       setTimeout(() => {
@@ -229,81 +300,135 @@ export default function Sesiones() {
     setAvatarMessage('');
   };
 
-  // Vista de lista de sesiones
+  /* ==========================================================
+     Vista: lista de sesiones
+     ========================================================== */
   if (view === 'list') {
     return (
-      <div className="space-y-6 animate-fadeIn">
-        <div className="flex items-center justify-between">
+      <div className="max-w-5xl space-y-6 animate-fadeIn">
+        {/* Encabezado de página */}
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#002333]">Sesiones</h1>
-            <p className="text-[#B4BEC9]">Practica tu inglés con el agente virtual</p>
+            <h2 className="font-display text-2xl font-semibold text-mk-ink">
+              Sesiones de práctica
+            </h2>
+            <p className="mt-1 text-sm text-mk-muted">
+              Conversa con el tutor virtual y recibe evaluación inmediata de tu
+              pronunciación.
+            </p>
           </div>
-          <button 
+          <button
             onClick={() => setShowNewSessionModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#159A9C] text-white rounded-xl font-medium hover:bg-[#002333] transition-all shadow-lg hover:scale-105"
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-md bg-mk-gold text-mk-ink text-sm font-semibold hover:bg-mk-gold-dark transition-colors"
           >
-            <Plus className="w-5 h-5" />
-            Nueva Sesión
+            <Plus className="w-[18px] h-[18px]" />
+            Nueva sesión
           </button>
         </div>
 
-        {/* Lista de sesiones */}
-        <div className="grid gap-4">
-          {sesionesDemo.map((sesion) => (
-            <div 
-              key={sesion.id}
-              className="bg-white rounded-2xl p-6 border border-[#B4BEC9]/20 shadow-sm hover:shadow-lg transition-all cursor-pointer group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#159A9C] to-[#002333] flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-                  <MessageSquare className="w-7 h-7" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-[#002333] text-lg">{sesion.titulo}</h3>
-                  <p className="text-[#B4BEC9] text-sm">{sesion.tema} • Nivel {sesion.nivel}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-[#159A9C]">{sesion.puntuacion}%</p>
-                  <p className="text-xs text-[#B4BEC9]">{sesion.duracion} min</p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-[#B4BEC9] group-hover:text-[#159A9C] transition-colors" />
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Historial */}
+        <section className="bg-mk-surface border border-mk-line rounded-lg overflow-hidden">
+          <div className="px-5 py-3 border-b border-mk-line">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-mk-muted">
+              Historial reciente
+            </h3>
+          </div>
 
-        {/* Modal Nueva Sesión */}
+          <ul className="divide-y divide-mk-line">
+            {sesionesDemo.map((sesion) => (
+              <li key={sesion.id}>
+                <button className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-mk-ice transition-colors group">
+                  <div className="w-10 h-10 rounded-md bg-mk-blue-soft text-mk-blue flex items-center justify-center shrink-0">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-mk-ink truncate">
+                        {sesion.titulo}
+                      </h4>
+                      <span className="shrink-0 px-1.5 py-0.5 rounded border border-mk-line text-[11px] font-semibold text-mk-muted">
+                        {sesion.nivel}
+                      </span>
+                    </div>
+                    <p className="text-sm text-mk-muted truncate">
+                      {sesion.tema} · {sesion.duracion} min · {sesion.fecha}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`shrink-0 px-2.5 py-1 rounded-md text-sm font-semibold tabular-nums ${estiloPuntuacion(
+                      sesion.puntuacion
+                    )}`}
+                  >
+                    {sesion.puntuacion}%
+                  </span>
+
+                  <ChevronRight className="w-4 h-4 shrink-0 text-mk-line group-hover:text-mk-blue transition-colors" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Modal: nueva sesión */}
         {showNewSessionModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden animate-fadeIn">
-              <div className="p-6 border-b border-[#B4BEC9]/20 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-[#002333]">Selecciona un Tema</h2>
-                <button 
+          <div
+            className="fixed inset-0 bg-mk-ink/40 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowNewSessionModal(false)}
+          >
+            <div
+              className="bg-mk-surface rounded-lg border border-mk-line shadow-lg max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-fadeIn"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 py-4 border-b border-mk-line flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="font-display text-xl font-semibold text-mk-ink">
+                    Nueva sesión
+                  </h3>
+                  <p className="mt-0.5 text-sm text-mk-muted">
+                    Elige el tema que quieres practicar hoy.
+                  </p>
+                </div>
+                <button
                   onClick={() => setShowNewSessionModal(false)}
-                  className="p-2 rounded-lg hover:bg-[#DEEFE7] transition-colors"
+                  className="w-9 h-9 shrink-0 rounded-md flex items-center justify-center text-mk-muted hover:bg-mk-ice hover:text-mk-ink transition-colors"
+                  aria-label="Cerrar"
                 >
-                  <X className="w-5 h-5 text-[#002333]" />
+                  <X className="w-[18px] h-[18px]" />
                 </button>
               </div>
-              <div className="p-6 grid grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto">
-                {temasDisponibles.map((tema) => (
-                  <button
-                    key={tema.id}
-                    onClick={() => iniciarSesion(tema)}
-                    className="p-4 rounded-xl border border-[#B4BEC9]/20 hover:border-[#159A9C] hover:bg-[#DEEFE7]/30 transition-all text-left group"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="text-3xl">{tema.icono}</span>
-                      <div>
-                        <h3 className="font-semibold text-[#002333] group-hover:text-[#159A9C]">
-                          {tema.nombre}
-                        </h3>
-                        <p className="text-xs text-[#B4BEC9] mb-2">Nivel {tema.nivel}</p>
-                        <p className="text-sm text-[#B4BEC9]">{tema.descripcion}</p>
+
+              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto">
+                {temasDisponibles.map((tema) => {
+                  const { Icono } = tema;
+                  return (
+                    <button
+                      key={tema.id}
+                      onClick={() => iniciarSesion(tema)}
+                      className="p-4 rounded-md border border-mk-line bg-mk-surface hover:border-mk-blue hover:bg-mk-blue-soft transition-colors text-left"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 shrink-0 rounded-md bg-mk-blue-soft text-mk-blue flex items-center justify-center">
+                          <Icono className="w-[18px] h-[18px]" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-mk-ink">
+                              {tema.nombre}
+                            </h4>
+                            <span className="shrink-0 px-1.5 py-0.5 rounded bg-mk-surface border border-mk-line text-[11px] font-semibold text-mk-muted">
+                              {tema.nivel}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-mk-muted">
+                            {tema.descripcion}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -312,159 +437,210 @@ export default function Sesiones() {
     );
   }
 
-  // Vista de sesión activa
+  /* ==========================================================
+     Vista: sesión activa
+     ========================================================== */
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col animate-fadeIn">
-      {/* Header de sesión */}
-      <div className="bg-white rounded-2xl p-4 mb-4 border border-[#B4BEC9]/20 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-2 rounded-xl bg-[#159A9C]/10">
-              <MessageSquare className="w-5 h-5 text-[#159A9C]" />
+    <div className="h-[calc(100vh-8rem)] flex flex-col gap-4 animate-fadeIn">
+      {/* Barra de sesión */}
+      <div className="bg-mk-surface border border-mk-line rounded-lg px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-md bg-mk-blue-soft text-mk-blue flex items-center justify-center shrink-0">
+              <MessageSquare className="w-5 h-5" />
             </div>
-            <div>
-              <h2 className="font-semibold text-[#002333]">{sesionActiva?.tema}</h2>
-              <p className="text-sm text-[#B4BEC9]">Nivel {sesionActiva?.nivel}</p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="font-semibold text-mk-ink truncate">
+                  {sesionActiva?.tema}
+                </h2>
+                <span className="shrink-0 px-1.5 py-0.5 rounded border border-mk-line text-[11px] font-semibold text-mk-muted">
+                  {sesionActiva?.nivel}
+                </span>
+              </div>
+              <p className="text-[11px] uppercase tracking-[0.06em] text-mk-muted">
+                {isPaused ? 'En pausa' : 'Sesión en curso'}
+              </p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-4">
-            {/* Timer */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-[#DEEFE7] rounded-xl">
-              <Clock className="w-4 h-4 text-[#159A9C]" />
-              <span className="font-mono font-semibold text-[#002333]">{formatTime(sessionTime)}</span>
-            </div>
-            
-            {/* Score */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-[#159A9C]/10 rounded-xl">
-              <Award className="w-4 h-4 text-[#159A9C]" />
-              <span className="font-semibold text-[#159A9C]">{score}%</span>
+
+          <div className="flex items-center gap-2">
+            {/* Cronómetro */}
+            <div className="flex items-center gap-2 h-9 px-3 rounded-md bg-mk-ice border border-mk-line">
+              <Clock className="w-4 h-4 text-mk-muted" />
+              <span className="font-mono text-sm font-semibold text-mk-ink tabular-nums">
+                {formatTime(sessionTime)}
+              </span>
             </div>
 
-            {/* Controles */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsPaused(!isPaused)}
-                className="p-2 rounded-xl hover:bg-[#DEEFE7] transition-colors"
-                title={isPaused ? 'Reanudar' : 'Pausar'}
-              >
-                {isPaused ? <Play className="w-5 h-5 text-[#002333]" /> : <Pause className="w-5 h-5 text-[#002333]" />}
-              </button>
-              <button
-                onClick={() => setIsMuted(!isMuted)}
-                className="p-2 rounded-xl hover:bg-[#DEEFE7] transition-colors"
-                title={isMuted ? 'Activar audio' : 'Silenciar'}
-              >
-                {isMuted ? <VolumeX className="w-5 h-5 text-[#002333]" /> : <Volume2 className="w-5 h-5 text-[#002333]" />}
-              </button>
-              <button
-                onClick={finalizarSesion}
-                className="p-2 rounded-xl hover:bg-red-100 transition-colors"
-                title="Finalizar sesión"
-              >
-                <Square className="w-5 h-5 text-red-500" />
-              </button>
+            {/* Puntuación */}
+            <div
+              className={`flex items-center h-9 px-3 rounded-md text-sm font-semibold tabular-nums ${
+                score ? estiloPuntuacion(score) : 'bg-mk-ice text-mk-muted'
+              }`}
+            >
+              {score}% precisión
             </div>
+
+            <div className="w-px h-6 bg-mk-line mx-1" />
+
+            <button
+              onClick={() => setIsPaused(!isPaused)}
+              className="w-9 h-9 rounded-md border border-mk-line flex items-center justify-center text-mk-muted hover:bg-mk-ice hover:text-mk-ink transition-colors"
+              title={isPaused ? 'Reanudar' : 'Pausar'}
+            >
+              {isPaused ? (
+                <Play className="w-[18px] h-[18px]" />
+              ) : (
+                <Pause className="w-[18px] h-[18px]" />
+              )}
+            </button>
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className="w-9 h-9 rounded-md border border-mk-line flex items-center justify-center text-mk-muted hover:bg-mk-ice hover:text-mk-ink transition-colors"
+              title={isMuted ? 'Activar audio' : 'Silenciar'}
+            >
+              {isMuted ? (
+                <VolumeX className="w-[18px] h-[18px]" />
+              ) : (
+                <Volume2 className="w-[18px] h-[18px]" />
+              )}
+            </button>
+            <button
+              onClick={finalizarSesion}
+              className="h-9 px-3 rounded-md border border-mk-line text-sm font-semibold text-mk-muted hover:bg-mk-error-bg hover:border-mk-error hover:text-mk-error transition-colors"
+            >
+              Finalizar
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Contenido principal */}
+      {/* Área de trabajo */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0">
-        {/* Panel del Avatar */}
-        <div className="bg-gradient-to-br from-[#DEEFE7] via-white to-[#DEEFE7] rounded-2xl border border-[#B4BEC9]/20 shadow-sm overflow-hidden">
-          <Avatar2D 
-            speaking={isSpeaking} 
-            emotion={avatarEmotion}
-            message={avatarMessage}
-            height="100%"
-          />
+        {/* Avatar */}
+        <div className="bg-mk-surface border border-mk-line rounded-lg overflow-hidden">
+          <Suspense
+            fallback={
+              <div className="w-full h-full flex items-center justify-center text-sm text-mk-muted">
+                Cargando tutor…
+              </div>
+            }
+          >
+            <Avatar
+              speaking={isSpeaking}
+              emotion={avatarEmotion}
+              message={avatarMessage}
+              height="100%"
+            />
+          </Suspense>
         </div>
 
-        {/* Panel de Conversación */}
-        <div className="bg-white rounded-2xl border border-[#B4BEC9]/20 shadow-sm flex flex-col overflow-hidden">
+        {/* Conversación */}
+        <div className="bg-mk-surface border border-mk-line rounded-lg flex flex-col overflow-hidden">
           {/* Frase a practicar */}
           {currentPhrase && (
-            <div className="p-4 bg-[#002333] text-white">
-              <p className="text-sm text-white/60 mb-1">Repite esta frase:</p>
-              <p className="text-lg font-medium">{currentPhrase.texto}</p>
-              <p className="text-sm text-white/60 mt-1">({currentPhrase.traduccion})</p>
+            <div className="px-5 py-4 bg-mk-blue-soft border-b border-mk-line">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-mk-blue">
+                Repite esta frase
+              </p>
+              <p className="mt-1.5 font-display text-xl font-semibold text-mk-ink">
+                {currentPhrase.texto}
+              </p>
+              <p className="mt-0.5 text-sm text-mk-muted">
+                {currentPhrase.traduccion}
+              </p>
             </div>
           )}
 
-          {/* Conversación */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Mensajes */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {conversation.length === 0 ? (
               <div className="h-full flex items-center justify-center text-center">
                 <div>
-                  <MessageSquare className="w-12 h-12 text-[#B4BEC9] mx-auto mb-3" />
-                  <p className="text-[#B4BEC9]">La conversación aparecerá aquí</p>
+                  <MessageSquare className="w-8 h-8 text-mk-line mx-auto mb-3" />
+                  <p className="text-sm text-mk-muted">
+                    Tu conversación aparecerá aquí
+                  </p>
                 </div>
               </div>
             ) : (
               conversation.map((msg, index) => (
-                <div 
+                <div
                   key={index}
-                  className={`flex ${msg.tipo === 'usuario' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${
+                    msg.tipo === 'usuario' ? 'justify-end' : 'justify-start'
+                  }`}
                 >
-                  <div className={`max-w-[80%] p-3 rounded-2xl ${
-                    msg.tipo === 'usuario' 
-                      ? 'bg-[#159A9C] text-white rounded-br-none' 
-                      : 'bg-[#DEEFE7] text-[#002333] rounded-bl-none'
-                  }`}>
+                  <div
+                    className={`max-w-[80%] px-3.5 py-2.5 text-sm ${
+                      msg.tipo === 'usuario'
+                        ? 'bg-mk-blue text-white rounded-lg rounded-br-sm'
+                        : 'bg-mk-ice border border-mk-line text-mk-ink rounded-lg rounded-bl-sm'
+                    }`}
+                  >
                     <p>{msg.texto}</p>
                     {msg.puntuacion && (
-                      <p className={`text-xs mt-1 ${msg.tipo === 'usuario' ? 'text-white/70' : 'text-[#159A9C]'}`}>
-                        Puntuación: {msg.puntuacion}%
+                      <p
+                        className={`mt-1 text-[11px] font-semibold tabular-nums ${
+                          msg.puntuacion >= 85
+                            ? 'text-mk-success'
+                            : 'text-mk-streak-ink'
+                        }`}
+                      >
+                        Precisión {msg.puntuacion}%
                       </p>
                     )}
                   </div>
                 </div>
               ))
             )}
+            <div ref={conversationEndRef} />
           </div>
 
-          {/* Input de usuario */}
-          <div className="p-4 border-t border-[#B4BEC9]/20">
-            <div className="flex items-center gap-3">
-              {/* Botón de micrófono */}
+          {/* Entrada */}
+          <div className="p-3 border-t border-mk-line">
+            <div className="flex items-center gap-2">
               <button
                 onClick={toggleRecording}
-                className={`p-3 rounded-xl transition-all ${
-                  isRecording 
-                    ? 'bg-red-500 text-white animate-pulse' 
-                    : 'bg-[#DEEFE7] text-[#002333] hover:bg-[#159A9C] hover:text-white'
+                className={`w-11 h-11 shrink-0 rounded-md flex items-center justify-center transition-colors ${
+                  isRecording
+                    ? 'bg-mk-error-bg text-mk-error border border-mk-error animate-pulse'
+                    : 'border border-mk-line text-mk-muted hover:bg-mk-ice hover:text-mk-ink'
                 }`}
+                title={isRecording ? 'Detener grabación' : 'Grabar respuesta'}
               >
-                {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                {isRecording ? (
+                  <MicOff className="w-[18px] h-[18px]" />
+                ) : (
+                  <Mic className="w-[18px] h-[18px]" />
+                )}
               </button>
 
-              {/* Input de texto */}
               <input
                 type="text"
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && enviarRespuesta()}
-                placeholder="Escribe o usa el micrófono..."
-                className="flex-1 px-4 py-3 rounded-xl border border-[#B4BEC9]/40 focus:border-[#159A9C] focus:ring-2 focus:ring-[#159A9C]/20 outline-none transition-all"
+                onKeyDown={(e) => e.key === 'Enter' && enviarRespuesta()}
+                placeholder="Escribe tu respuesta o usa el micrófono"
+                className="flex-1 min-w-0 h-11 px-3.5 rounded-md border border-mk-line bg-mk-surface text-sm text-mk-ink placeholder:text-mk-muted focus:border-mk-blue focus:ring-2 focus:ring-mk-blue/15 outline-none transition-colors"
               />
 
-              {/* Botón de enviar */}
               <button
                 onClick={enviarRespuesta}
                 disabled={!userInput.trim()}
-                className="p-3 rounded-xl bg-[#159A9C] text-white hover:bg-[#002333] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-11 h-11 shrink-0 rounded-md bg-mk-gold text-mk-ink flex items-center justify-center hover:bg-mk-gold-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-mk-gold"
+                title="Enviar respuesta"
               >
-                <Send className="w-5 h-5" />
+                <Send className="w-[18px] h-[18px]" />
               </button>
 
-              {/* Botón de siguiente */}
               <button
                 onClick={mostrarSiguienteFrase}
-                className="p-3 rounded-xl bg-[#DEEFE7] text-[#002333] hover:bg-[#159A9C] hover:text-white transition-all"
+                className="w-11 h-11 shrink-0 rounded-md border border-mk-line flex items-center justify-center text-mk-muted hover:bg-mk-ice hover:text-mk-ink transition-colors"
                 title="Siguiente frase"
               >
-                <RefreshCw className="w-5 h-5" />
+                <RefreshCw className="w-[18px] h-[18px]" />
               </button>
             </div>
           </div>
