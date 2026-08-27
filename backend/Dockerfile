@@ -30,21 +30,12 @@ COPY . .
 # ---------- runtime ----------
 FROM python:3.12-slim AS runtime
 
-RUN useradd --create-home --uid 1000 app
-
 WORKDIR /app
-COPY --from=builder --chown=app:app /app /app
-
-# WORKDIR crea /app como root ANTES del COPY de arriba, y --chown solo
-# aplica al contenido copiado, no siempre al directorio /app preexistente
-# — sin esto, collectstatic no puede crear /app/staticfiles en runtime.
-RUN mkdir -p /app/staticfiles /app/media && chown -R app:app /app
+COPY --from=builder /app /app
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
-
-USER app
 
 EXPOSE 8000
 
@@ -53,10 +44,12 @@ EXPOSE 8000
 CMD ["sh", "-c", "python manage.py collectstatic --no-input && python manage.py migrate --no-input && gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60"]
 
 # ---------- nginx_conf ----------
-FROM nginx:alpine AS nginx_conf
+# Versión PINEADA a propósito: el Docker de este servidor es viejo (API 1.41,
+# Docker 20.10) y su perfil seccomp le devuelve EPERM a syscalls que usan los
+# nginx nuevos — con `nginx:latest` el master muere al escribir /run/nginx.pid.
+# Los otros proyectos del servidor no lo sufren porque usan `image: nginx` sin
+# build y corren una imagen vieja ya cacheada ahí.
+FROM nginx:1.25 AS nginx_conf
 
-# `sh -c` en el compose (alpine no trae bash) para copiar lo que venga en
-# el volumen externo /home/app/nginx (html/logs/ssl) a las rutas reales que
-# usa nginx.conf.
 COPY nginx.conf /etc/nginx/nginx.conf
 RUN mkdir -p /home/app/nginx/html /home/app/nginx/logs /home/app/nginx/ssl

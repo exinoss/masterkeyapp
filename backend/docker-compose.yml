@@ -53,13 +53,18 @@ services:
       dockerfile: Dockerfile
       target: nginx_conf
     tty: true
+    # El seccomp por defecto del Docker viejo de este servidor le devuelve
+    # EPERM al pwrite() de /run/nginx.pid y nginx no arranca. Si con la
+    # versión pineada del Dockerfile alcanza, esta línea se puede sacar.
+    security_opt:
+      - seccomp:unconfined
     ports:
       # TODO: confirmar con el servidor que este puerto host esté libre
       - "9616:443"
     volumes:
       - nginxfiles:/home/app/nginx
     command: >
-      sh -c "
+      bash -c "
         mkdir -p /var/www/html /etc/nginx/logs /ssl &&
         cp -r /home/app/nginx/html/. /var/www/html/ 2>/dev/null || true &&
         cp -r /home/app/nginx/logs/. /etc/nginx/logs/ 2>/dev/null || true &&

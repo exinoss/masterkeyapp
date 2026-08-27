@@ -59,6 +59,9 @@ pipeline {
                         docker compose ps || true
                         echo "--- logs nginx_ssl (últimas 80 líneas) ---"
                         docker compose logs --tail=80 nginx_ssl || true
+                        echo "--- quién corre nginx y puede escribir /run ---"
+                        docker compose run --rm --no-deps --entrypoint sh nginx_ssl -c \
+                          "id; ls -ld /run; (touch /run/prueba && echo WRITE_OK) || echo WRITE_FALLO" || true
                         echo "--- curl local al puerto publicado ---"
                         curl -sk -o /dev/null -w "status: %{http_code}\\n" https://localhost:9616/health || true
                     '''
