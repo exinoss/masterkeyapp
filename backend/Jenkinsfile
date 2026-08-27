@@ -46,6 +46,27 @@ pipeline {
                 }
             }
         }
+
+        // Sin acceso SSH al servidor, esto es la única forma de ver el
+        // estado real de los contenedores (en particular nginx_ssl, que
+        // el healthcheck de arriba no chequea). Corre siempre, no rompe
+        // el build si algo de esto falla.
+        stage('Diagnóstico') {
+            steps {
+                dir('backend') {
+                    sh '''
+                        echo "--- docker compose ps ---"
+                        docker compose ps || true
+                        echo "--- puertos publicados de nginx_ssl_masterkey ---"
+                        docker port nginx_ssl_masterkey || true
+                        echo "--- logs nginx_ssl_masterkey (últimas 80 líneas) ---"
+                        docker logs nginx_ssl_masterkey --tail 80 || true
+                        echo "--- curl local al puerto publicado ---"
+                        curl -sk -o /dev/null -w "status: %{http_code}\\n" https://localhost:9616/health || true
+                    '''
+                }
+            }
+        }
     }
 
     post {

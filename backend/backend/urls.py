@@ -13,7 +13,13 @@ def health(request):
     return HttpResponse('ok')
 
 
+def raiz(request):
+    """Confirmación visual rápida de que el backend real responde."""
+    return HttpResponse('API MasterKey encendida 🔑')
+
+
 urlpatterns = [
+    path('', raiz),
     path('health', health),
     path('admin/', admin.site.urls),
 
