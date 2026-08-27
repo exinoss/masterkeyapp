@@ -5,7 +5,7 @@ from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
-from django.db.models import Avg, Sum, Q
+from django.db.models import Avg, Sum
 import random
 
 from .models import AgenteVirtual, SesionPractica, Retroalimentacion, EstadoSesion
@@ -17,7 +17,7 @@ from .serializers import (
     EstadisticasSesionSerializer, ReporteEstudianteSerializer
 )
 from . import ai
-from users.models import Estudiante, Docente, AsignacionDocenteEstudiante, Inscripcion, TipoUsuario
+from users.models import Estudiante, Docente, AsignacionDocenteEstudiante, TipoUsuario
 
 
 class AgenteVirtualListView(generics.ListCreateAPIView):
@@ -57,17 +57,14 @@ class SesionPracticaListView(generics.ListCreateAPIView):
             except Estudiante.DoesNotExist:
                 return SesionPractica.objects.none()
         elif usuario.tipo_usuario == TipoUsuario.DOCENTE:
-            # Solo las sesiones de sus estudiantes: asignados a mano (vía
-            # vieja, datos reales existentes) o inscriptos con código en
-            # uno de sus cursos (vía nueva) — antes devolvía TODAS las
-            # sesiones de TODOS los estudiantes.
+            # Solo las sesiones de sus estudiantes asignados — antes
+            # devolvía TODAS las sesiones de TODOS los estudiantes.
             try:
                 docente = usuario.perfil_docente
                 return SesionPractica.objects.filter(
-                    Q(estudiante__docentes_asignados__docente=docente,
-                      estudiante__docentes_asignados__activo=True) |
-                    Q(estudiante__inscripciones__curso__docente=docente)
-                ).distinct()
+                    estudiante__docentes_asignados__docente=docente,
+                    estudiante__docentes_asignados__activo=True
+                )
             except Docente.DoesNotExist:
                 return SesionPractica.objects.none()
         elif usuario.tipo_usuario == TipoUsuario.ADMINISTRADOR:
@@ -504,14 +501,9 @@ class RetroalimentacionListView(generics.ListAPIView):
                 docente = usuario.perfil_docente
             except Docente.DoesNotExist:
                 return Retroalimentacion.objects.none()
-            asignado = (
-                AsignacionDocenteEstudiante.objects.filter(
-                    docente=docente, estudiante=sesion.estudiante, activo=True
-                ).exists() or
-                Inscripcion.objects.filter(
-                    curso__docente=docente, estudiante=sesion.estudiante
-                ).exists()
-            )
+            asignado = AsignacionDocenteEstudiante.objects.filter(
+                docente=docente, estudiante=sesion.estudiante, activo=True
+            ).exists()
             if not asignado:
                 return Retroalimentacion.objects.none()
         elif usuario.tipo_usuario != TipoUsuario.ADMINISTRADOR:
@@ -594,16 +586,14 @@ class ReporteDocenteView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Obtener estudiantes según permisos. Docente ve los asignados a
-        # mano (vía vieja, datos reales existentes) O inscriptos en uno de
-        # sus cursos con código (vía nueva).
+        # Obtener estudiantes según permisos.
         if usuario.tipo_usuario == TipoUsuario.DOCENTE:
             try:
                 docente = usuario.perfil_docente
                 estudiantes = Estudiante.objects.filter(
-                    Q(docentes_asignados__docente=docente, docentes_asignados__activo=True) |
-                    Q(inscripciones__curso__docente=docente)
-                ).distinct()
+                    docentes_asignados__docente=docente,
+                    docentes_asignados__activo=True
+                )
             except Docente.DoesNotExist:
                 estudiantes = Estudiante.objects.none()
         else:

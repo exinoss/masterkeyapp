@@ -3,7 +3,7 @@ Serializers para la app Users.
 """
 from rest_framework import serializers
 from .models import (
-    Usuario, Estudiante, Docente, Administrador, Curso, Inscripcion,
+    Usuario, Estudiante, Docente, Administrador, AsignacionDocenteEstudiante,
     TipoUsuario, NivelIngles
 )
 
@@ -216,49 +216,18 @@ class AdministradorSerializer(serializers.ModelSerializer):
         fields = ['id', 'usuario', 'nivel_acceso', 'departamento']
 
 
-# ==================== CURSOS (código de acceso) ====================
-# Reemplaza la asignación manual de Docente-Estudiante hacia adelante: el
-# Docente crea un Curso con fechas y un código; el Estudiante se une solo
-# con ese código (ver UnirseCursoView). AsignacionDocenteEstudiante (arriba
-# en models.py) se deja intacta por los datos reales que ya tiene, pero
-# ya no se crea nada nuevo ahí a mano.
+# ==================== ASIGNACIÓN DOCENTE-ESTUDIANTE (Administrador) ====================
 
-class CursoSerializer(serializers.ModelSerializer):
-    """Serializer de lectura — incluye el nombre del docente y si venció."""
+class AsignacionDocenteEstudianteSerializer(serializers.ModelSerializer):
+    """Lectura de una asignación, con los nombres ya resueltos para no
+    tener que pedir Docente/Estudiante aparte en el frontend."""
     docente_nombre = serializers.CharField(source='docente.usuario.get_full_name', read_only=True)
-    vencido = serializers.ReadOnlyField()
-    total_inscritos = serializers.IntegerField(read_only=True, default=0)
+    estudiante_nombre = serializers.CharField(source='estudiante.usuario.get_full_name', read_only=True)
 
     class Meta:
-        model = Curso
+        model = AsignacionDocenteEstudiante
         fields = [
-            'id', 'nombre', 'codigo', 'fecha_inicio', 'fecha_fin',
-            'docente_nombre', 'vencido', 'total_inscritos', 'created_at'
+            'id', 'docente', 'estudiante', 'docente_nombre',
+            'estudiante_nombre', 'fecha_asignacion', 'activo'
         ]
-        read_only_fields = ['id', 'codigo', 'created_at']
-
-
-class CursoCreateSerializer(serializers.ModelSerializer):
-    """Serializer para que un Docente cree un curso — el código lo genera
-    la vista, no se recibe del cliente."""
-
-    class Meta:
-        model = Curso
-        fields = ['nombre', 'fecha_inicio', 'fecha_fin']
-
-    def validate(self, attrs):
-        if attrs['fecha_fin'] <= attrs['fecha_inicio']:
-            raise serializers.ValidationError({
-                'fecha_fin': 'La fecha de fin debe ser posterior a la de inicio.'
-            })
-        return attrs
-
-
-class InscripcionSerializer(serializers.ModelSerializer):
-    """Serializer de lectura para 'mi curso' del Estudiante — el curso va
-    anidado para no tener que pedirlo aparte."""
-    curso = CursoSerializer(read_only=True)
-
-    class Meta:
-        model = Inscripcion
-        fields = ['id', 'curso', 'fecha_inscripcion']
+        read_only_fields = ['id', 'fecha_asignacion', 'activo']

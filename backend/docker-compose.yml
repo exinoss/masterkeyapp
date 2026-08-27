@@ -9,13 +9,8 @@ services:
     image: masterkey-backend:local
     container_name: masterkey_backend
     restart: unless-stopped
-
-    # ── Variables de entorno ─────────────────────────────────
-    # .env real vive fuera de git, ver .env.example
     env_file:
       - .env
-
-    # ── Healthcheck ──────────────────────────────────────────
     healthcheck:
       test: ["CMD", "python", "-c",
              "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -23,8 +18,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
-
-    # ── Límites de recursos ──────────────────────────────────
     deploy:
       resources:
         limits:
@@ -33,12 +26,8 @@ services:
         reservations:
           cpus: "0.25"
           memory: 128M
-
-    # ── Red aislada ──────────────────────────────────────────
     networks:
       - masterkey_net
-
-    # ── Logging ──────────────────────────────────────────────
     logging:
       driver: "json-file"
       options:
@@ -53,13 +42,9 @@ services:
       dockerfile: Dockerfile
       target: nginx_conf
     tty: true
-    # El seccomp por defecto del Docker viejo de este servidor le devuelve
-    # EPERM al pwrite() de /run/nginx.pid y nginx no arranca. Si con la
-    # versión pineada del Dockerfile alcanza, esta línea se puede sacar.
     security_opt:
       - seccomp:unconfined
     ports:
-      # TODO: confirmar con el servidor que este puerto host esté libre
       - "9616:443"
     volumes:
       - nginxfiles:/home/app/nginx
@@ -78,10 +63,7 @@ services:
       - masterkey_net
 
 volumes:
-  # OJO: este es el MISMO volumen "nginxfiles" que ya usan RememberGo,
-  # webtestmathuteq y apiescuela en este servidor — no es uno propio de
-  # MasterKey. Ya existe y ya trae el cert institucional (ssl/), por eso
-  # no lleva "name:" propio: apunta directo al que ya está ahí.
+  # Volumen compartido con RememberGo/webtestmathuteq/apiescuela, ya trae el cert institucional
   nginxfiles:
     external: true
 

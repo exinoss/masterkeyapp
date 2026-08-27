@@ -220,33 +220,40 @@ export const usuariosService = {
   },
 };
 
-// ==================== CURSOS (código de acceso) ====================
-// Reemplaza la asignación manual Docente-Estudiante: el Docente crea un
-// curso con fechas y recibe un código; el Estudiante se une solo.
-export const cursosService = {
-  // Docente: sus propios cursos. Administrador: todos.
+// ==================== ASIGNACIÓN DOCENTE-ESTUDIANTE (Administrador) ====================
+export const asignacionesService = {
   async listar() {
-    const response = await api.get('/cursos/');
+    const response = await api.get('/asignaciones/');
     return response.data.results;
   },
 
-  // Docente: crea un curso ({ nombre, fecha_inicio, fecha_fin }); el
-  // backend genera el código y lo devuelve en la respuesta.
-  async crear(data) {
-    const response = await api.post('/cursos/', data);
+  async crear(docenteId, estudianteId) {
+    const response = await api.post('/asignaciones/', {
+      docente: docenteId,
+      estudiante: estudianteId,
+    });
     return response.data;
   },
 
-  // Estudiante: se une con el código.
-  async unirse(codigo) {
-    const response = await api.post('/cursos/unirse/', { codigo });
+  async quitar(id) {
+    const response = await api.delete(`/asignaciones/${id}/`);
     return response.data;
   },
+};
 
-  // Estudiante: su inscripción más reciente, o { inscripcion: null }.
-  async miCurso() {
-    const response = await api.get('/cursos/mi-curso/');
-    return response.data;
+// Listas para poblar los selects del formulario de asignación — el
+// Administrador ve todos los docentes/estudiantes de la plataforma.
+export const docentesService = {
+  async listar() {
+    const response = await api.get('/docentes/');
+    return response.data.results;
+  },
+};
+
+export const estudiantesService = {
+  async listar() {
+    const response = await api.get('/estudiantes/');
+    return response.data.results;
   },
 };
 

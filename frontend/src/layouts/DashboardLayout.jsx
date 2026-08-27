@@ -14,7 +14,6 @@ import {
   FileText,
   BarChart3,
   Users,
-  GraduationCap,
   User,
   LogOut,
   Bell,
@@ -141,28 +140,14 @@ export default function DashboardLayout() {
       label: 'Gestionar Usuarios'
     };
 
-    // El Docente crea cursos con código acá; el Estudiante se une con uno
-    // en la suya — reemplaza la asignación manual que hacía el Admin.
-    const misCursosItem = {
-      path: '/dashboard/cursos',
-      icon: <GraduationCap className={ICON} />,
-      label: 'Mis Cursos'
-    };
-
-    const miCursoItem = {
-      path: '/dashboard/unirse-curso',
-      icon: <GraduationCap className={ICON} />,
-      label: 'Mi Curso'
-    };
-
     const perfilItem = {
       path: '/dashboard/perfil',
       icon: <User className={ICON} />,
       label: 'Perfil'
     };
 
-    if (isEstudiante) return [inicio, sesionesItem, retroalimentacionesItem, miCursoItem, perfilItem];
-    if (isDocente) return [inicio, misCursosItem, retroalimentacionesItem, reportesItem, perfilItem];
+    if (isEstudiante) return [inicio, sesionesItem, retroalimentacionesItem, perfilItem];
+    if (isDocente) return [inicio, retroalimentacionesItem, reportesItem, perfilItem];
     if (isAdmin) return [inicio, retroalimentacionesItem, reportesItem, usuariosItem, perfilItem];
     return [inicio];
   };

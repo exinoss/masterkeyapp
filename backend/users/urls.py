@@ -9,7 +9,7 @@ from .views import (
     EstudianteListView, EstudianteDetailView,
     DocenteListView, DocenteDetailView,
     UsuarioListView, ActivarUsuarioView, DesactivarUsuarioView,
-    CursoListView, UnirseCursoView, MiCursoView
+    AsignacionListView, AsignacionDetailView
 )
 
 urlpatterns = [
@@ -34,8 +34,7 @@ urlpatterns = [
     path('usuarios/<int:pk>/activar/', ActivarUsuarioView.as_view(), name='usuario_activar'),
     path('usuarios/<int:pk>/desactivar/', DesactivarUsuarioView.as_view(), name='usuario_desactivar'),
 
-    # Cursos (código de acceso)
-    path('cursos/', CursoListView.as_view(), name='curso_list'),
-    path('cursos/unirse/', UnirseCursoView.as_view(), name='curso_unirse'),
-    path('cursos/mi-curso/', MiCursoView.as_view(), name='curso_mi_curso'),
+    # Asignación Docente-Estudiante (Administrador)
+    path('asignaciones/', AsignacionListView.as_view(), name='asignacion_list'),
+    path('asignaciones/<int:pk>/', AsignacionDetailView.as_view(), name='asignacion_detail'),
 ]

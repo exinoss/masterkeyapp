@@ -13,8 +13,6 @@ import Retroalimentaciones from './pages/Retroalimentaciones';
 import Perfil from './pages/Perfil';
 import Reportes from './pages/Reportes';
 import GestionUsuarios from './pages/GestionUsuarios';
-import MisCursos from './pages/MisCursos';
-import UnirseCurso from './pages/UnirseCurso';
 
 // Layouts
 import DashboardLayout from './layouts/DashboardLayout';
@@ -48,8 +46,6 @@ function App() {
             <Route path="perfil" element={<Perfil />} />
             <Route path="reportes" element={<Reportes />} />
             <Route path="usuarios" element={<GestionUsuarios />} />
-            <Route path="cursos" element={<MisCursos />} />
-            <Route path="unirse-curso" element={<UnirseCurso />} />
           </Route>
 
           {/* Redirigir rutas no encontradas */}

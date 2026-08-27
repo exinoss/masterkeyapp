@@ -1,8 +1,5 @@
 // Jenkinsfile — MasterKey Backend
-// Misma convención que RememberGo: el .env real vive como credencial
-// "Secret file" en Jenkins (Manage Jenkins → Credentials), nunca en git.
-// Creá una con id "masterkey-env" y el contenido de backend/.env.example
-// ya completado con los valores reales.
+// .env real vive como credencial Secret file en Jenkins, id "masterkey-env" (ver .env.example)
 pipeline {
     agent any
 
@@ -13,13 +10,8 @@ pipeline {
                 dir('backend') {
                     withCredentials([file(credentialsId: 'masterkey-env', variable: 'MASTERKEY_ENV_FILE')]) {
                         sh '''
-                            # Copiar las credenciales seguras al archivo .env
                             cp "$MASTERKEY_ENV_FILE" .env
-
-                            # Apagar contenedores anteriores limpiando huérfanos
                             docker compose down --remove-orphans || true
-
-                            # Recompilar y levantar los servicios
                             docker compose up -d --build
                         '''
                     }
@@ -47,10 +39,7 @@ pipeline {
             }
         }
 
-        // Sin acceso SSH al servidor, esto es la única forma de ver el
-        // estado real de los contenedores (en particular nginx_ssl, que
-        // el healthcheck de arriba no chequea). Corre siempre, no rompe
-        // el build si algo de esto falla.
+        // Sin acceso SSH al servidor, esto es la única ventana al estado real de los contenedores
         stage('Diagnóstico') {
             steps {
                 dir('backend') {
@@ -59,9 +48,6 @@ pipeline {
                         docker compose ps || true
                         echo "--- logs nginx_ssl (últimas 80 líneas) ---"
                         docker compose logs --tail=80 nginx_ssl || true
-                        echo "--- quién corre nginx y puede escribir /run ---"
-                        docker compose run --rm --no-deps --entrypoint sh nginx_ssl -c \
-                          "id; ls -ld /run; (touch /run/prueba && echo WRITE_OK) || echo WRITE_FALLO" || true
                         echo "--- curl local al puerto publicado ---"
                         curl -sk -o /dev/null -w "status: %{http_code}\\n" https://localhost:9616/health || true
                     '''
@@ -75,7 +61,6 @@ pipeline {
             echo 'El deploy falló — revisá los logs de la etapa que rompió.'
         }
         always {
-            // No dejar el .env real (con secretos) tirado en el workspace.
             dir('backend') {
                 sh 'rm -f .env'
             }
