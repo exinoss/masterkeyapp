@@ -5,15 +5,16 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import BrandMark from '../components/BrandMark';
 import {
-  KeyRound,
   Menu,
   X,
   LayoutDashboard,
   MessageSquare,
   FileText,
-  Users,
   BarChart3,
+  Users,
+  GraduationCap,
   User,
   LogOut,
   Bell,
@@ -28,7 +29,7 @@ function Marca() {
   return (
     <div className="flex items-center gap-3">
       <div className="w-10 h-10 rounded-md bg-mk-blue flex items-center justify-center">
-        <KeyRound className="w-5 h-5 text-white" strokeWidth={2.2} />
+        <BrandMark className="w-5 h-5" />
       </div>
       <div className="leading-tight">
         <p className="font-display text-lg font-bold text-mk-ink tracking-tight">
@@ -114,47 +115,55 @@ export default function DashboardLayout() {
       end: true
     };
 
-    const practica = [
-      {
-        path: '/dashboard/sesiones',
-        icon: <MessageSquare className={ICON} />,
-        label: 'Sesiones'
-      },
-      {
-        path: '/dashboard/retroalimentaciones',
-        icon: <FileText className={ICON} />,
-        label: 'Retroalimentaciones'
-      }
-    ];
+    // "Sesiones" es solo de Estudiante — Docente/Admin nunca pueden crear
+    // una (el backend responde 403), así que ni se les muestra.
+    const sesionesItem = {
+      path: '/dashboard/sesiones',
+      icon: <MessageSquare className={ICON} />,
+      label: 'Sesiones'
+    };
 
-    const gestion = [
-      {
-        path: '/dashboard/reportes',
-        icon: <BarChart3 className={ICON} />,
-        label: 'Reporte Estudiantes'
-      },
-      {
-        path: '/dashboard/grupo-estudiantes',
-        icon: <Users className={ICON} />,
-        label: 'Administrar Grupo'
-      }
-    ];
+    const retroalimentacionesItem = {
+      path: '/dashboard/retroalimentaciones',
+      icon: <FileText className={ICON} />,
+      label: 'Retroalimentaciones'
+    };
 
-    const cierre = [
-      {
-        path: '/dashboard/estadisticas',
-        icon: <BarChart3 className={ICON} />,
-        label: 'Estadísticas'
-      },
-      {
-        path: '/dashboard/perfil',
-        icon: <User className={ICON} />,
-        label: 'Perfil'
-      }
-    ];
+    const reportesItem = {
+      path: '/dashboard/reportes',
+      icon: <BarChart3 className={ICON} />,
+      label: 'Reporte Estudiantes'
+    };
 
-    if (isEstudiante) return [inicio, ...practica, ...cierre];
-    if (isDocente || isAdmin) return [inicio, ...practica, ...gestion, ...cierre];
+    const usuariosItem = {
+      path: '/dashboard/usuarios',
+      icon: <Users className={ICON} />,
+      label: 'Gestionar Usuarios'
+    };
+
+    // El Docente crea cursos con código acá; el Estudiante se une con uno
+    // en la suya — reemplaza la asignación manual que hacía el Admin.
+    const misCursosItem = {
+      path: '/dashboard/cursos',
+      icon: <GraduationCap className={ICON} />,
+      label: 'Mis Cursos'
+    };
+
+    const miCursoItem = {
+      path: '/dashboard/unirse-curso',
+      icon: <GraduationCap className={ICON} />,
+      label: 'Mi Curso'
+    };
+
+    const perfilItem = {
+      path: '/dashboard/perfil',
+      icon: <User className={ICON} />,
+      label: 'Perfil'
+    };
+
+    if (isEstudiante) return [inicio, sesionesItem, retroalimentacionesItem, miCursoItem, perfilItem];
+    if (isDocente) return [inicio, misCursosItem, retroalimentacionesItem, reportesItem, perfilItem];
+    if (isAdmin) return [inicio, retroalimentacionesItem, reportesItem, usuariosItem, perfilItem];
     return [inicio];
   };
 

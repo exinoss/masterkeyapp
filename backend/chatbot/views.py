@@ -5,7 +5,7 @@ from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
-from django.db.models import Avg, Sum
+from django.db.models import Avg, Sum, Q
 import random
 
 from .models import AgenteVirtual, SesionPractica, Retroalimentacion, EstadoSesion
@@ -16,7 +16,8 @@ from .serializers import (
     InteraccionRequestSerializer, InteraccionResponseSerializer,
     EstadisticasSesionSerializer, ReporteEstudianteSerializer
 )
-from users.models import Estudiante, TipoUsuario
+from . import ai
+from users.models import Estudiante, Docente, AsignacionDocenteEstudiante, Inscripcion, TipoUsuario
 
 
 class AgenteVirtualListView(generics.ListCreateAPIView):
@@ -55,10 +56,24 @@ class SesionPracticaListView(generics.ListCreateAPIView):
                 return SesionPractica.objects.filter(estudiante=usuario.perfil_estudiante)
             except Estudiante.DoesNotExist:
                 return SesionPractica.objects.none()
-        elif usuario.tipo_usuario in [TipoUsuario.DOCENTE, TipoUsuario.ADMINISTRADOR]:
+        elif usuario.tipo_usuario == TipoUsuario.DOCENTE:
+            # Solo las sesiones de sus estudiantes: asignados a mano (vía
+            # vieja, datos reales existentes) o inscriptos con código en
+            # uno de sus cursos (vía nueva) — antes devolvía TODAS las
+            # sesiones de TODOS los estudiantes.
+            try:
+                docente = usuario.perfil_docente
+                return SesionPractica.objects.filter(
+                    Q(estudiante__docentes_asignados__docente=docente,
+                      estudiante__docentes_asignados__activo=True) |
+                    Q(estudiante__inscripciones__curso__docente=docente)
+                ).distinct()
+            except Docente.DoesNotExist:
+                return SesionPractica.objects.none()
+        elif usuario.tipo_usuario == TipoUsuario.ADMINISTRADOR:
             return SesionPractica.objects.all()
         return SesionPractica.objects.none()
-    
+
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return SesionPracticaCreateSerializer
@@ -200,6 +215,31 @@ class FinalizarSesionView(APIView):
             )
 
 
+class SiguienteFraseView(APIView):
+    """
+    Genera (con DeepSeek, o el respaldo local si no está disponible) la
+    siguiente frase de práctica para una sesión, acorde a su tema y nivel.
+    POST /api/sesiones/<id>/siguiente-frase/
+    Reemplaza la elección aleatoria de un array fijo que hacía el frontend.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            sesion = SesionPractica.objects.get(pk=pk)
+        except SesionPractica.DoesNotExist:
+            return Response(
+                {'error': 'Sesión no encontrada'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        frase_anterior = request.data.get('frase_anterior')
+        frase = ai.generar_frase_practica(
+            sesion.tema_practica, sesion.nivel_dificultad, frase_anterior
+        )
+        return Response(frase)
+
+
 # ==================== INTERACCIÓN CON EL AGENTE ====================
 
 class InteraccionAgenteView(APIView):
@@ -237,48 +277,58 @@ class InteraccionAgenteView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # ========================================
-        # AQUÍ SE INTEGRARÁN LOS SERVICIOS:
-        # 1. ASR: Transcribir audio si se envía
-        # 2. NLP: Analizar pronunciación y gramática
-        # 3. TTS: Generar audio de respuesta
-        # ========================================
-        
-        # Por ahora, simulamos el procesamiento
-        # TODO: Integrar Vosk/Whisper para ASR
-        # TODO: Integrar análisis de pronunciación
-        # TODO: Integrar Coqui TTS para síntesis de voz
-        
-        # Simular análisis de pronunciación
-        puntuacion_pronunciacion = self._analizar_pronunciacion(texto_estudiante, texto_esperado)
-        puntuacion_fluidez = random.uniform(60, 100)
-        puntuacion_entonacion = random.uniform(60, 100)
-        puntuacion_ritmo = random.uniform(60, 100)
-        
-        # Detectar errores (simulado)
-        errores, sugerencias = self._detectar_errores(texto_estudiante, texto_esperado)
-        
-        # Generar respuesta del agente
-        respuesta_agente = self._generar_respuesta(
-            texto_estudiante, texto_esperado, puntuacion_pronunciacion
+        # El ASR (voz -> texto) ya no pasa por acá: lo hace la Web Speech
+        # API del navegador (frontend/src/utils/voz.js) y llega como texto
+        # en `texto_estudiante`. Acá solo queda evaluar ese texto y generar
+        # la respuesta del tutor — antes con una heurística de relleno,
+        # ahora con DeepSeek (ver chatbot/ai.py), con esa misma heurística
+        # como respaldo si la IA no está disponible.
+        resultado_ia = ai.evaluar_interaccion(
+            texto_estudiante, texto_esperado,
+            sesion.tema_practica, sesion.nivel_dificultad
         )
-        
-        # Determinar si necesita repetir
+
+        if resultado_ia:
+            puntuacion_pronunciacion = resultado_ia['puntuacion_pronunciacion']
+            puntuacion_fluidez = resultado_ia['puntuacion_fluidez']
+            puntuacion_entonacion = resultado_ia['puntuacion_entonacion']
+            puntuacion_ritmo = resultado_ia['puntuacion_ritmo']
+            errores = resultado_ia['errores_gramaticales']
+            sugerencias = resultado_ia['sugerencias']
+            respuesta_agente = resultado_ia['respuesta_agente']
+            emocion_avatar = resultado_ia['emocion_avatar']
+        else:
+            # Respaldo: la heurística original por comparación de palabras,
+            # para que la app siga funcionando aunque DeepSeek esté caído,
+            # sin key configurada, o dé un error inesperado.
+            puntuacion_pronunciacion = self._analizar_pronunciacion(texto_estudiante, texto_esperado)
+            puntuacion_fluidez = random.uniform(60, 100)
+            puntuacion_entonacion = random.uniform(60, 100)
+            puntuacion_ritmo = random.uniform(60, 100)
+            errores, sugerencias = self._detectar_errores(texto_estudiante, texto_esperado)
+            respuesta_agente = self._generar_respuesta(
+                texto_estudiante, texto_esperado, puntuacion_pronunciacion
+            )
+            puntuacion_general_previa = (
+                puntuacion_pronunciacion + puntuacion_fluidez +
+                puntuacion_entonacion + puntuacion_ritmo
+            ) / 4
+            if puntuacion_general_previa >= 90:
+                emocion_avatar = 'feliz'
+            elif puntuacion_general_previa >= 70:
+                emocion_avatar = 'neutral'
+            elif puntuacion_general_previa >= 50:
+                emocion_avatar = 'pensativo'
+            else:
+                emocion_avatar = 'animando'
+
+        # Puntuación general: cálculo propio, determinista — no se le pide
+        # a la IA que sume, para no depender de que lo haga bien.
         puntuacion_general = (
-            puntuacion_pronunciacion + puntuacion_fluidez + 
+            puntuacion_pronunciacion + puntuacion_fluidez +
             puntuacion_entonacion + puntuacion_ritmo
         ) / 4
         necesita_repetir = puntuacion_general < 70
-        
-        # Determinar emoción del avatar
-        if puntuacion_general >= 90:
-            emocion_avatar = 'feliz'
-        elif puntuacion_general >= 70:
-            emocion_avatar = 'neutral'
-        elif puntuacion_general >= 50:
-            emocion_avatar = 'pensativo'
-        else:
-            emocion_avatar = 'animando'
         
         # Calcular tiempo de respuesta
         tiempo_respuesta_ms = int((time.time() - start_time) * 1000)
@@ -336,8 +386,10 @@ class InteraccionAgenteView(APIView):
     
     def _analizar_pronunciacion(self, texto_estudiante: str, texto_esperado: str) -> float:
         """
-        Analiza la pronunciación comparando el texto del estudiante con el esperado.
-        TODO: Integrar análisis fonético real con servicios ASR.
+        Comparación de similitud por palabras — RESPALDO cuando DeepSeek no
+        está disponible (ver ai.evaluar_interaccion, que es el camino
+        principal desde que existe). Se mantiene tal cual para que la app
+        no se caiga del todo si falla la IA.
         """
         if not texto_estudiante or not texto_esperado:
             return 50.0
@@ -357,8 +409,8 @@ class InteraccionAgenteView(APIView):
     
     def _detectar_errores(self, texto_estudiante: str, texto_esperado: str) -> tuple:
         """
-        Detecta errores gramaticales y de pronunciación.
-        TODO: Integrar análisis NLP real.
+        Detecta errores por comparación posicional de palabras — RESPALDO,
+        ver nota en _analizar_pronunciacion.
         """
         errores = []
         sugerencias = []
@@ -387,31 +439,31 @@ class InteraccionAgenteView(APIView):
     
     def _generar_respuesta(self, texto_estudiante: str, texto_esperado: str, puntuacion: float) -> str:
         """
-        Genera la respuesta del agente virtual.
-        TODO: Integrar generación de lenguaje natural.
+        Elige una respuesta fija según rango de puntuación — RESPALDO, ver
+        nota en _analizar_pronunciacion.
         """
         if puntuacion >= 90:
             respuestas = [
-                "¡Excelente pronunciación! 🌟 You did great!",
-                "¡Muy bien! Tu pronunciación es casi perfecta. Keep it up!",
-                "¡Fantástico! You're making amazing progress!"
+                "¡Excelente pronunciación! Lo hiciste de maravilla.",
+                "¡Muy bien! Tu pronunciación es casi perfecta.",
+                "¡Fantástico! Estás progresando muchísimo."
             ]
         elif puntuacion >= 70:
             respuestas = [
                 "¡Buen trabajo! Hay algunos detalles que podemos mejorar.",
-                "Good effort! Let's practice a bit more.",
+                "Buen esfuerzo, practiquemos un poco más.",
                 "¡Vas por buen camino! Practiquemos un poco más."
             ]
         elif puntuacion >= 50:
             respuestas = [
-                "Let's try again. Focus on pronouncing each word clearly.",
-                "No te preocupes, ¡la práctica hace al maestro! Try again.",
-                "Good attempt! Let me help you with the pronunciation."
+                "Intentémoslo de nuevo. Enfócate en pronunciar cada palabra con claridad.",
+                "No te preocupes, ¡la práctica hace al maestro! Inténtalo de nuevo.",
+                "Buen intento, te ayudo con la pronunciación."
             ]
         else:
             respuestas = [
-                "Don't give up! Let's break it down and practice word by word.",
-                "It's okay to make mistakes. That's how we learn! Try again.",
+                "No te rindas, vamos a practicarlo palabra por palabra.",
+                "Está bien equivocarse, así se aprende. Inténtalo de nuevo.",
                 "¡Vamos a intentarlo de nuevo! Escucha con atención y repite conmigo."
             ]
         
@@ -424,15 +476,48 @@ class RetroalimentacionListView(generics.ListAPIView):
     """
     Listar retroalimentaciones de una sesión.
     GET /api/retroalimentaciones/?sesion_id=<id>
+
+    Antes esta vista devolvía lo que fuera con solo pasarle un sesion_id,
+    sin verificar que le perteneciera a quien pregunta — cualquier
+    Estudiante podía leer la retroalimentación de cualquier otro. Se
+    verifica dueño real antes de devolver nada.
     """
     serializer_class = RetroalimentacionSerializer
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_queryset(self):
         sesion_id = self.request.query_params.get('sesion_id')
-        if sesion_id:
-            return Retroalimentacion.objects.filter(sesion_id=sesion_id)
-        return Retroalimentacion.objects.none()
+        if not sesion_id:
+            return Retroalimentacion.objects.none()
+
+        usuario = self.request.user
+        try:
+            sesion = SesionPractica.objects.select_related('estudiante__usuario').get(pk=sesion_id)
+        except SesionPractica.DoesNotExist:
+            return Retroalimentacion.objects.none()
+
+        if usuario.tipo_usuario == TipoUsuario.ESTUDIANTE:
+            if sesion.estudiante.usuario_id != usuario.id:
+                return Retroalimentacion.objects.none()
+        elif usuario.tipo_usuario == TipoUsuario.DOCENTE:
+            try:
+                docente = usuario.perfil_docente
+            except Docente.DoesNotExist:
+                return Retroalimentacion.objects.none()
+            asignado = (
+                AsignacionDocenteEstudiante.objects.filter(
+                    docente=docente, estudiante=sesion.estudiante, activo=True
+                ).exists() or
+                Inscripcion.objects.filter(
+                    curso__docente=docente, estudiante=sesion.estudiante
+                ).exists()
+            )
+            if not asignado:
+                return Retroalimentacion.objects.none()
+        elif usuario.tipo_usuario != TipoUsuario.ADMINISTRADOR:
+            return Retroalimentacion.objects.none()
+
+        return Retroalimentacion.objects.filter(sesion_id=sesion_id)
 
 
 # ==================== ESTADÍSTICAS Y REPORTES ====================
@@ -509,15 +594,17 @@ class ReporteDocenteView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Obtener estudiantes según permisos
+        # Obtener estudiantes según permisos. Docente ve los asignados a
+        # mano (vía vieja, datos reales existentes) O inscriptos en uno de
+        # sus cursos con código (vía nueva).
         if usuario.tipo_usuario == TipoUsuario.DOCENTE:
             try:
                 docente = usuario.perfil_docente
                 estudiantes = Estudiante.objects.filter(
-                    docentes_asignados__docente=docente,
-                    docentes_asignados__activo=True
-                )
-            except:
+                    Q(docentes_asignados__docente=docente, docentes_asignados__activo=True) |
+                    Q(inscripciones__curso__docente=docente)
+                ).distinct()
+            except Docente.DoesNotExist:
                 estudiantes = Estudiante.objects.none()
         else:
             estudiantes = Estudiante.objects.all()

@@ -1,15 +1,15 @@
 /**
- * Página de Login y Registro
+ * Login / Registro — MasterKey
  */
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Globe, 
-  Mail, 
-  Lock, 
-  User, 
-  Eye, 
+import BrandMark from '../components/BrandMark';
+import {
+  Mail,
+  Lock,
+  User,
+  Eye,
   EyeOff,
   ArrowRight,
   UserPlus,
@@ -20,10 +20,17 @@ import {
   CheckCircle
 } from 'lucide-react';
 
+const INPUT =
+  'w-full pl-11 pr-4 h-11 rounded-md border border-mk-line bg-mk-surface text-mk-ink placeholder:text-mk-muted focus:border-mk-blue focus:ring-2 focus:ring-mk-blue/15 outline-none transition-colors';
+const INPUT_SIN_ICONO =
+  'w-full px-3.5 h-11 rounded-md border border-mk-line bg-mk-surface text-mk-ink placeholder:text-mk-muted focus:border-mk-blue focus:ring-2 focus:ring-mk-blue/15 outline-none transition-colors';
+const LABEL = 'block text-sm font-medium text-mk-ink mb-1.5';
+const ICONO = 'absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-mk-muted';
+
 export default function Login() {
   const navigate = useNavigate();
   const { login, registro } = useAuth();
-  
+
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -53,15 +60,15 @@ export default function Login() {
 
   // Solo Estudiantes y Docentes pueden registrarse (Administradores se crean desde el panel admin)
   const tiposUsuario = [
-    { value: 'estudiante', label: 'Estudiante', icon: <GraduationCap className="w-5 h-5" />, description: 'Aprende y practica inglés' },
-    { value: 'docente', label: 'Docente', icon: <BookOpen className="w-5 h-5" />, description: 'Supervisa estudiantes' }
+    { value: 'estudiante', label: 'Estudiante', icon: <GraduationCap className="w-5 h-5" /> },
+    { value: 'docente', label: 'Docente', icon: <BookOpen className="w-5 h-5" /> }
   ];
 
   const nivelesIngles = [
     { value: 'A1', label: 'A1 - Principiante' },
     { value: 'A2', label: 'A2 - Elemental' },
     { value: 'B1', label: 'B1 - Intermedio' },
-    { value: 'B2', label: 'B2 - Intermedio Alto' },
+    { value: 'B2', label: 'B2 - Intermedio alto' },
     { value: 'C1', label: 'C1 - Avanzado' },
     { value: 'C2', label: 'C2 - Maestría' }
   ];
@@ -112,9 +119,19 @@ export default function Login() {
     }
 
     try {
-      await registro(registroForm);
-      setSuccess('¡Registro exitoso! Bienvenido a AVI.');
-      setTimeout(() => navigate('/dashboard'), 1000);
+      const response = await registro(registroForm);
+      if (response.pendiente_aprobacion) {
+        // Docente recién registrado: no hay sesión que iniciar todavía.
+        setSuccess(
+          response.mensaje ||
+            'Tu cuenta fue creada y está pendiente de aprobación por un administrador.'
+        );
+        setIsLogin(true);
+        setRegistroForm({ ...registroForm, password: '', password_confirm: '' });
+      } else {
+        setSuccess('¡Registro exitoso! Bienvenido a MasterKey.');
+        setTimeout(() => navigate('/dashboard'), 1000);
+      }
     } catch (err) {
       const errorData = err.response?.data;
       if (errorData) {
@@ -129,78 +146,78 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#DEEFE7] via-[#FFFFFF] to-[#DEEFE7] flex">
-      {/* Panel Izquierdo - Decorativo */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#002333] to-[#159A9C] p-12 flex-col justify-between">
-        <div>
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Globe className="w-7 h-7 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-white">AVI</span>
-          </Link>
-        </div>
+    <div className="min-h-screen bg-mk-ice flex">
+      {/* Panel izquierdo — decorativo */}
+      <div className="hidden lg:flex lg:w-1/2 bg-mk-blue p-12 flex-col justify-between">
+        <Link to="/" className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-md bg-white/15 flex items-center justify-center">
+            <BrandMark className="w-6 h-6" />
+          </div>
+          <span className="font-display text-xl font-bold text-white tracking-tight">
+            MasterKey
+          </span>
+        </Link>
 
         <div className="space-y-8">
-          <h1 className="text-4xl font-bold text-white leading-tight">
-            Aprende inglés con inteligencia artificial
+          <h1 className="font-display text-4xl font-semibold text-white leading-tight">
+            Aprende inglés con un tutor que te escucha
           </h1>
-          <p className="text-white/80 text-lg leading-relaxed">
-            Nuestro agente virtual te ayudará a mejorar tu pronunciación 
-            y fluidez con retroalimentación personalizada en tiempo real.
+          <p className="text-white/75 text-lg leading-relaxed">
+            Tu tutor virtual te ayuda a mejorar tu pronunciación y fluidez
+            con retroalimentación personalizada en cada sesión.
           </p>
-          
-          <div className="space-y-4">
+
+          <div className="space-y-3">
             {[
-              'Práctica interactiva con avatar 3D',
+              'Práctica interactiva con tutor animado',
               'Retroalimentación de pronunciación',
               'Seguimiento de progreso detallado'
             ].map((item, index) => (
               <div key={index} className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-                  <CheckCircle className="w-4 h-4 text-white" />
-                </div>
+                <CheckCircle className="w-5 h-5 text-mk-gold shrink-0" />
                 <span className="text-white/90">{item}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <p className="text-white/60 text-sm">
-          © 2024 AVI - Agente Virtual Inteligente
+        <p className="text-white/50 text-sm">
+          © 2026 MasterKey — Academia de Inglés
         </p>
       </div>
 
-      {/* Panel Derecho - Formulario */}
+      {/* Panel derecho — formulario */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
           {/* Logo para móvil */}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#159A9C] to-[#002333] flex items-center justify-center">
-              <Globe className="w-7 h-7 text-white" />
+            <div className="w-10 h-10 rounded-md bg-mk-blue flex items-center justify-center">
+              <BrandMark className="w-6 h-6" />
             </div>
-            <span className="text-2xl font-bold text-[#002333]">AVI</span>
+            <span className="font-display text-xl font-bold text-mk-ink tracking-tight">
+              MasterKey
+            </span>
           </div>
 
           {/* Tabs Login/Registro */}
-          <div className="flex bg-[#DEEFE7] rounded-xl p-1 mb-8">
+          <div className="flex bg-mk-ice rounded-md p-1 mb-7 border border-mk-line">
             <button
               onClick={() => { setIsLogin(true); setError(''); setSuccess(''); }}
-              className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
-                isLogin 
-                  ? 'bg-white text-[#002333] shadow-md' 
-                  : 'text-[#B4BEC9] hover:text-[#002333]'
+              className={`flex-1 h-10 rounded-[5px] text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                isLogin
+                  ? 'bg-mk-surface text-mk-ink shadow-sm'
+                  : 'text-mk-muted hover:text-mk-ink'
               }`}
             >
               <LogIn className="w-4 h-4" />
-              Iniciar Sesión
+              Iniciar sesión
             </button>
             <button
               onClick={() => { setIsLogin(false); setError(''); setSuccess(''); }}
-              className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
-                !isLogin 
-                  ? 'bg-white text-[#002333] shadow-md' 
-                  : 'text-[#B4BEC9] hover:text-[#002333]'
+              className={`flex-1 h-10 rounded-[5px] text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                !isLogin
+                  ? 'bg-mk-surface text-mk-ink shadow-sm'
+                  : 'text-mk-muted hover:text-mk-ink'
               }`}
             >
               <UserPlus className="w-4 h-4" />
@@ -208,30 +225,28 @@ export default function Login() {
             </button>
           </div>
 
-          {/* Mensajes de Error/Éxito */}
+          {/* Mensajes de error/éxito */}
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-3 animate-fadeIn">
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-              <p className="text-red-600 text-sm">{error}</p>
+            <div className="mb-5 px-4 py-3 rounded-md bg-mk-error-bg border border-mk-error/30 flex items-center gap-3 animate-fadeIn">
+              <AlertCircle className="w-[18px] h-[18px] text-mk-error shrink-0" />
+              <p className="text-sm text-mk-error">{error}</p>
             </div>
           )}
 
           {success && (
-            <div className="mb-6 p-4 rounded-xl bg-green-50 border border-green-200 flex items-center gap-3 animate-fadeIn">
-              <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-              <p className="text-green-600 text-sm">{success}</p>
+            <div className="mb-5 px-4 py-3 rounded-md bg-mk-success-bg border border-mk-success/30 flex items-center gap-3 animate-fadeIn">
+              <CheckCircle className="w-[18px] h-[18px] text-mk-success shrink-0" />
+              <p className="text-sm text-mk-success">{success}</p>
             </div>
           )}
 
           {/* Formulario de Login */}
           {isLogin ? (
-            <form onSubmit={handleLogin} className="space-y-5 animate-fadeIn">
+            <form onSubmit={handleLogin} className="space-y-4 animate-fadeIn">
               <div>
-                <label className="block text-sm font-medium text-[#002333] mb-2">
-                  Correo Electrónico
-                </label>
+                <label className={LABEL}>Correo electrónico</label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#B4BEC9]" />
+                  <Mail className={ICONO} />
                   <input
                     type="email"
                     name="email"
@@ -239,17 +254,15 @@ export default function Login() {
                     onChange={handleLoginChange}
                     required
                     placeholder="tu@email.com"
-                    className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-[#B4BEC9]/40 focus:border-[#159A9C] focus:ring-2 focus:ring-[#159A9C]/20 outline-none transition-all bg-white"
+                    className={INPUT}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#002333] mb-2">
-                  Contraseña
-                </label>
+                <label className={LABEL}>Contraseña</label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#B4BEC9]" />
+                  <Lock className={ICONO} />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     name="password"
@@ -257,14 +270,15 @@ export default function Login() {
                     onChange={handleLoginChange}
                     required
                     placeholder="••••••••"
-                    className="w-full pl-12 pr-12 py-3.5 rounded-xl border border-[#B4BEC9]/40 focus:border-[#159A9C] focus:ring-2 focus:ring-[#159A9C]/20 outline-none transition-all bg-white"
+                    className={`${INPUT} pr-11`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#B4BEC9] hover:text-[#002333]"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-mk-muted hover:text-mk-ink"
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
                   </button>
                 </div>
               </div>
@@ -272,36 +286,34 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 rounded-xl bg-[#159A9C] text-white font-semibold hover:bg-[#002333] transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-[#159A9C]/30 hover:shadow-[#002333]/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-12 rounded-md bg-mk-gold text-mk-ink font-semibold hover:bg-mk-gold-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-mk-ink/30 border-t-mk-ink rounded-full animate-spin" />
                 ) : (
                   <>
-                    Iniciar Sesión
-                    <ArrowRight className="w-5 h-5" />
+                    Iniciar sesión
+                    <ArrowRight className="w-[18px] h-[18px]" />
                   </>
                 )}
               </button>
             </form>
           ) : (
             /* Formulario de Registro */
-            <form onSubmit={handleRegistro} className="space-y-5 animate-fadeIn">
-              {/* Tipo de Usuario */}
+            <form onSubmit={handleRegistro} className="space-y-4 animate-fadeIn">
+              {/* Tipo de usuario */}
               <div>
-                <label className="block text-sm font-medium text-[#002333] mb-3">
-                  Tipo de Usuario
-                </label>
+                <label className={LABEL}>Tipo de usuario</label>
                 <div className="grid grid-cols-2 gap-3">
                   {tiposUsuario.map((tipo) => (
                     <button
                       key={tipo.value}
                       type="button"
                       onClick={() => setRegistroForm({ ...registroForm, tipo_usuario: tipo.value })}
-                      className={`p-3 rounded-xl border-2 transition-all duration-300 flex flex-col items-center gap-2 ${
+                      className={`p-3 rounded-md border transition-colors flex flex-col items-center gap-1.5 ${
                         registroForm.tipo_usuario === tipo.value
-                          ? 'border-[#159A9C] bg-[#159A9C]/10 text-[#159A9C]'
-                          : 'border-[#B4BEC9]/40 hover:border-[#159A9C]/50 text-[#B4BEC9]'
+                          ? 'border-mk-blue bg-mk-blue-soft text-mk-blue'
+                          : 'border-mk-line text-mk-muted hover:border-mk-blue/50'
                       }`}
                     >
                       {tipo.icon}
@@ -311,11 +323,9 @@ export default function Login() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-[#002333] mb-2">
-                    Nombre
-                  </label>
+                  <label className={LABEL}>Nombre</label>
                   <input
                     type="text"
                     name="nombre"
@@ -323,13 +333,11 @@ export default function Login() {
                     onChange={handleRegistroChange}
                     required
                     placeholder="Juan"
-                    className="w-full px-4 py-3 rounded-xl border border-[#B4BEC9]/40 focus:border-[#159A9C] focus:ring-2 focus:ring-[#159A9C]/20 outline-none transition-all bg-white"
+                    className={INPUT_SIN_ICONO}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#002333] mb-2">
-                    Apellido
-                  </label>
+                  <label className={LABEL}>Apellido</label>
                   <input
                     type="text"
                     name="apellido"
@@ -337,17 +345,15 @@ export default function Login() {
                     onChange={handleRegistroChange}
                     required
                     placeholder="Pérez"
-                    className="w-full px-4 py-3 rounded-xl border border-[#B4BEC9]/40 focus:border-[#159A9C] focus:ring-2 focus:ring-[#159A9C]/20 outline-none transition-all bg-white"
+                    className={INPUT_SIN_ICONO}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#002333] mb-2">
-                  Nombre de Usuario
-                </label>
+                <label className={LABEL}>Nombre de usuario</label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#B4BEC9]" />
+                  <User className={ICONO} />
                   <input
                     type="text"
                     name="username"
@@ -355,17 +361,15 @@ export default function Login() {
                     onChange={handleRegistroChange}
                     required
                     placeholder="juanperez"
-                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#B4BEC9]/40 focus:border-[#159A9C] focus:ring-2 focus:ring-[#159A9C]/20 outline-none transition-all bg-white"
+                    className={INPUT}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#002333] mb-2">
-                  Correo Electrónico
-                </label>
+                <label className={LABEL}>Correo electrónico</label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#B4BEC9]" />
+                  <Mail className={ICONO} />
                   <input
                     type="email"
                     name="email"
@@ -373,7 +377,7 @@ export default function Login() {
                     onChange={handleRegistroChange}
                     required
                     placeholder="tu@email.com"
-                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#B4BEC9]/40 focus:border-[#159A9C] focus:ring-2 focus:ring-[#159A9C]/20 outline-none transition-all bg-white"
+                    className={INPUT}
                   />
                 </div>
               </div>
@@ -381,14 +385,12 @@ export default function Login() {
               {/* Campos específicos para Estudiante */}
               {registroForm.tipo_usuario === 'estudiante' && (
                 <div>
-                  <label className="block text-sm font-medium text-[#002333] mb-2">
-                    Nivel de Inglés
-                  </label>
+                  <label className={LABEL}>Nivel de inglés</label>
                   <select
                     name="nivel_ingles"
                     value={registroForm.nivel_ingles}
                     onChange={handleRegistroChange}
-                    className="w-full px-4 py-3 rounded-xl border border-[#B4BEC9]/40 focus:border-[#159A9C] focus:ring-2 focus:ring-[#159A9C]/20 outline-none transition-all bg-white"
+                    className={INPUT_SIN_ICONO}
                   >
                     {nivelesIngles.map((nivel) => (
                       <option key={nivel.value} value={nivel.value}>
@@ -402,27 +404,23 @@ export default function Login() {
               {/* Campos específicos para Docente */}
               {registroForm.tipo_usuario === 'docente' && (
                 <div>
-                  <label className="block text-sm font-medium text-[#002333] mb-2">
-                    Especialidad
-                  </label>
+                  <label className={LABEL}>Especialidad</label>
                   <input
                     type="text"
                     name="especialidad"
                     value={registroForm.especialidad}
                     onChange={handleRegistroChange}
                     placeholder="Ej: Inglés de negocios"
-                    className="w-full px-4 py-3 rounded-xl border border-[#B4BEC9]/40 focus:border-[#159A9C] focus:ring-2 focus:ring-[#159A9C]/20 outline-none transition-all bg-white"
+                    className={INPUT_SIN_ICONO}
                   />
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-[#002333] mb-2">
-                    Contraseña
-                  </label>
+                  <label className={LABEL}>Contraseña</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#B4BEC9]" />
+                    <Lock className={ICONO} />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       name="password"
@@ -430,16 +428,14 @@ export default function Login() {
                       onChange={handleRegistroChange}
                       required
                       placeholder="••••••"
-                      className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#B4BEC9]/40 focus:border-[#159A9C] focus:ring-2 focus:ring-[#159A9C]/20 outline-none transition-all bg-white"
+                      className={INPUT}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#002333] mb-2">
-                    Confirmar
-                  </label>
+                  <label className={LABEL}>Confirmar</label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#B4BEC9]" />
+                    <Lock className={ICONO} />
                     <input
                       type={showPassword ? 'text' : 'password'}
                       name="password_confirm"
@@ -447,7 +443,7 @@ export default function Login() {
                       onChange={handleRegistroChange}
                       required
                       placeholder="••••••"
-                      className="w-full pl-12 pr-4 py-3 rounded-xl border border-[#B4BEC9]/40 focus:border-[#159A9C] focus:ring-2 focus:ring-[#159A9C]/20 outline-none transition-all bg-white"
+                      className={INPUT}
                     />
                   </div>
                 </div>
@@ -456,23 +452,22 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 rounded-xl bg-[#159A9C] text-white font-semibold hover:bg-[#002333] transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-[#159A9C]/30 hover:shadow-[#002333]/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-12 rounded-md bg-mk-gold text-mk-ink font-semibold hover:bg-mk-gold-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-mk-ink/30 border-t-mk-ink rounded-full animate-spin" />
                 ) : (
                   <>
-                    Crear Cuenta
-                    <ArrowRight className="w-5 h-5" />
+                    Crear cuenta
+                    <ArrowRight className="w-[18px] h-[18px]" />
                   </>
                 )}
               </button>
             </form>
           )}
 
-          {/* Link a Home */}
-          <p className="text-center mt-6 text-[#B4BEC9]">
-            <Link to="/" className="text-[#159A9C] hover:text-[#002333] font-medium">
+          <p className="text-center mt-6 text-sm text-mk-muted">
+            <Link to="/" className="text-mk-blue hover:underline font-medium">
               ← Volver al inicio
             </Link>
           </p>

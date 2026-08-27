@@ -25,6 +25,13 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
+# DeepSeek (chatbot.ai): genera las frases de práctica y evalúa las
+# interacciones de las sesiones. Sin key configurada, ese código cae a un
+# respaldo local (ver chatbot/ai.py) — la app sigue funcionando, solo sin
+# IA real. La key se pone en backend/.env (ya en .gitignore), nunca acá.
+DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
+DEEPSEEK_API_URL = os.environ.get('DEEPSEEK_API_URL', 'https://api.deepseek.com/chat/completions')
+
 
 # Application definition
 INSTALLED_APPS = [

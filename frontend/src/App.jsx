@@ -10,10 +10,11 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Sesiones from './pages/Sesiones';
 import Retroalimentaciones from './pages/Retroalimentaciones';
-import Estadisticas from './pages/Estadisticas';
 import Perfil from './pages/Perfil';
 import Reportes from './pages/Reportes';
-import GrupoEstudiantes from './pages/GrupoEstudiantes';
+import GestionUsuarios from './pages/GestionUsuarios';
+import MisCursos from './pages/MisCursos';
+import UnirseCurso from './pages/UnirseCurso';
 
 // Layouts
 import DashboardLayout from './layouts/DashboardLayout';
@@ -44,10 +45,11 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="sesiones" element={<Sesiones />} />
             <Route path="retroalimentaciones" element={<Retroalimentaciones />} />
-            <Route path="estadisticas" element={<Estadisticas />} />
             <Route path="perfil" element={<Perfil />} />
             <Route path="reportes" element={<Reportes />} />
-            <Route path="grupo-estudiantes" element={<GrupoEstudiantes />} />
+            <Route path="usuarios" element={<GestionUsuarios />} />
+            <Route path="cursos" element={<MisCursos />} />
+            <Route path="unirse-curso" element={<UnirseCurso />} />
           </Route>
 
           {/* Redirigir rutas no encontradas */}

@@ -28,7 +28,11 @@ export function AuthProvider({ children }) {
 
   const registro = async (userData) => {
     const response = await authService.registro(userData);
-    setUser(response.usuario);
+    // Solo se autentica si el backend emitió tokens: un Docente pendiente
+    // de aprobación no los trae (ver services/api.js).
+    if (response.tokens) {
+      setUser(response.usuario);
+    }
     return response;
   };
 

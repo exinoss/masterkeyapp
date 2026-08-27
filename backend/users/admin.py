@@ -3,7 +3,10 @@ Admin para la app Users.
 """
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import Usuario, Estudiante, Docente, Administrador, AsignacionDocenteEstudiante
+from .models import (
+    Usuario, Estudiante, Docente, Administrador, AsignacionDocenteEstudiante,
+    Curso, Inscripcion
+)
 
 
 @admin.register(Usuario)
@@ -62,3 +65,24 @@ class AsignacionDocenteEstudianteAdmin(admin.ModelAdmin):
     list_display = ['docente', 'estudiante', 'fecha_asignacion', 'activo']
     list_filter = ['activo', 'fecha_asignacion']
     raw_id_fields = ['docente', 'estudiante']
+
+
+@admin.register(Curso)
+class CursoAdmin(admin.ModelAdmin):
+    """Admin para cursos (código de acceso del docente)."""
+    list_display = ['nombre', 'codigo', 'docente', 'fecha_inicio', 'fecha_fin', 'vencido']
+    list_filter = ['fecha_inicio', 'fecha_fin']
+    search_fields = ['nombre', 'codigo', 'docente__usuario__email']
+    raw_id_fields = ['docente']
+
+    @admin.display(boolean=True)
+    def vencido(self, obj):
+        return obj.vencido
+
+
+@admin.register(Inscripcion)
+class InscripcionAdmin(admin.ModelAdmin):
+    """Admin para inscripciones de estudiantes a cursos."""
+    list_display = ['estudiante', 'curso', 'fecha_inscripcion']
+    list_filter = ['fecha_inscripcion']
+    raw_id_fields = ['curso', 'estudiante']

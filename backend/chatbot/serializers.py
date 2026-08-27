@@ -79,13 +79,16 @@ class SesionPracticaCreateSerializer(serializers.ModelSerializer):
 class SesionPracticaListSerializer(serializers.ModelSerializer):
     """Serializer simplificado para listar sesiones."""
     agente_nombre = serializers.CharField(source='agente.nombre', read_only=True)
-    
+    # Para las vistas de Docente/Administrador, que ven sesiones de más de
+    # un estudiante — sin esto no había forma de saber de quién era cada una.
+    estudiante_nombre = serializers.CharField(source='estudiante.usuario.get_full_name', read_only=True)
+
     class Meta:
         model = SesionPractica
         fields = [
             'id', 'titulo', 'tema_practica', 'nivel_dificultad',
             'puntuacion_sesion', 'estado', 'duracion_minutos',
-            'fecha_inicio', 'fecha_fin', 'agente_nombre'
+            'fecha_inicio', 'fecha_fin', 'agente_nombre', 'estudiante_nombre'
         ]
 
 

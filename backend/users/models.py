@@ -9,6 +9,7 @@ Basado en el diagrama de clases:
 """
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
+from django.utils import timezone
 
 
 class TipoUsuario(models.TextChoices):
@@ -244,3 +245,68 @@ class AsignacionDocenteEstudiante(models.Model):
     
     def __str__(self):
         return f"{self.docente.usuario.get_full_name()} -> {self.estudiante.usuario.get_full_name()}"
+
+
+class Curso(models.Model):
+    """
+    Curso/clase que crea un Docente, con un rango de fechas y un código de
+    acceso para que los estudiantes se unan solos (reemplaza la asignación
+    manual de `AsignacionDocenteEstudiante` como forma de vincular
+    Docente-Estudiante hacia adelante — ese modelo se deja intacto por los
+    datos reales que ya tiene, pero deja de crecer por UI manual).
+    """
+    docente = models.ForeignKey(
+        Docente,
+        on_delete=models.CASCADE,
+        related_name='cursos',
+        verbose_name='Docente'
+    )
+    nombre = models.CharField(max_length=200, verbose_name='Nombre del Curso')
+    codigo = models.CharField(max_length=8, unique=True, verbose_name='Código de Acceso')
+    fecha_inicio = models.DateField(verbose_name='Fecha de Inicio')
+    fecha_fin = models.DateField(verbose_name='Fecha de Fin')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Curso'
+        verbose_name_plural = 'Cursos'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.nombre} ({self.codigo})"
+
+    @property
+    def vencido(self):
+        """True si la fecha de fin ya pasó — un curso vencido no admite
+        nuevas inscripciones, y libera al estudiante para unirse a otro."""
+        return self.fecha_fin < timezone.localdate()
+
+
+class Inscripcion(models.Model):
+    """
+    Un Estudiante unido a un Curso mediante su código. Un estudiante solo
+    puede tener una inscripción vigente (curso no vencido) a la vez — esa
+    regla se valida en la vista al crear, no acá, porque depende de la
+    fecha actual, no de una restricción fija de base de datos.
+    """
+    curso = models.ForeignKey(
+        Curso,
+        on_delete=models.CASCADE,
+        related_name='inscripciones',
+        verbose_name='Curso'
+    )
+    estudiante = models.ForeignKey(
+        Estudiante,
+        on_delete=models.CASCADE,
+        related_name='inscripciones',
+        verbose_name='Estudiante'
+    )
+    fecha_inscripcion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Inscripción'
+        verbose_name_plural = 'Inscripciones'
+        ordering = ['-fecha_inscripcion']
+
+    def __str__(self):
+        return f"{self.estudiante.usuario.get_full_name()} en {self.curso}"

@@ -1,16 +1,18 @@
 /**
- * Página Home - Landing page de AVI
+ * Home — MasterKey
+ * Landing pública para visitantes sin sesión iniciada.
  */
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  BookOpen, 
-  Mic, 
-  BarChart3, 
-  Users, 
+import BrandMark from '../components/BrandMark';
+import {
+  BookOpen,
+  Mic,
+  BarChart3,
+  Users,
   ArrowRight,
   CheckCircle,
-  Globe
+  MessageSquare
 } from 'lucide-react';
 
 export default function Home() {
@@ -18,160 +20,160 @@ export default function Home() {
 
   const features = [
     {
-      icon: <Mic className="w-8 h-8" />,
-      title: 'Práctica de Pronunciación',
-      description: 'Mejora tu pronunciación con retroalimentación en tiempo real de nuestro agente virtual.'
+      icon: <Mic className="w-6 h-6" />,
+      title: 'Práctica de pronunciación',
+      description: 'Mejora tu pronunciación con retroalimentación en tiempo real de tu tutor virtual.'
     },
     {
-      icon: <BookOpen className="w-8 h-8" />,
-      title: 'Aprendizaje Interactivo',
+      icon: <BookOpen className="w-6 h-6" />,
+      title: 'Aprendizaje interactivo',
       description: 'Sesiones personalizadas adaptadas a tu nivel de inglés (A1 a C2).'
     },
     {
-      icon: <BarChart3 className="w-8 h-8" />,
-      title: 'Seguimiento de Progreso',
+      icon: <BarChart3 className="w-6 h-6" />,
+      title: 'Seguimiento de progreso',
       description: 'Estadísticas detalladas para monitorear tu avance en el aprendizaje.'
     },
     {
-      icon: <Users className="w-8 h-8" />,
-      title: 'Supervisión Docente',
+      icon: <Users className="w-6 h-6" />,
+      title: 'Supervisión docente',
       description: 'Los docentes pueden seguir el progreso de sus estudiantes con reportes completos.'
     }
   ];
 
   return (
-    <div className="min-h-screen bg-[#FFFFFF]">
+    <div className="min-h-screen bg-mk-ice">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-[#DEEFE7]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-mk-surface border-b border-mk-line">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#159A9C] to-[#002333] flex items-center justify-center">
-                <Globe className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-md bg-mk-blue flex items-center justify-center">
+                <BrandMark className="w-[18px] h-[18px]" />
               </div>
-              <span className="text-xl font-bold text-[#002333]">
-                AVI
+              <span className="font-display text-lg font-bold text-mk-ink tracking-tight">
+                MasterKey
               </span>
             </div>
 
-            {/* Navigation */}
             <nav className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-[#002333]/70 hover:text-[#159A9C] transition-colors">
+              <a href="#features" className="text-sm font-medium text-mk-muted hover:text-mk-ink transition-colors">
                 Características
               </a>
-              <a href="#about" className="text-[#002333]/70 hover:text-[#159A9C] transition-colors">
+              <a href="#about" className="text-sm font-medium text-mk-muted hover:text-mk-ink transition-colors">
                 Acerca de
               </a>
             </nav>
 
-            {/* Auth Button */}
-            <div>
-              {isAuthenticated ? (
-                <Link
-                  to="/dashboard"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#159A9C] text-white font-medium hover:bg-[#002333] transition-all duration-300 shadow-lg shadow-[#159A9C]/20 hover:shadow-[#002333]/20"
-                >
-                  Ir al Dashboard
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              ) : (
-                <Link
-                  to="/login"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#159A9C] text-white font-medium hover:bg-[#002333] transition-all duration-300 shadow-lg shadow-[#159A9C]/20 hover:shadow-[#002333]/20"
-                >
-                  Ingresar
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              )}
-            </div>
+            {isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center gap-2 h-10 px-4 rounded-md bg-mk-gold text-mk-ink text-sm font-semibold hover:bg-mk-gold-dark transition-colors"
+              >
+                Ir al Dashboard
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 h-10 px-4 rounded-md bg-mk-gold text-mk-ink text-sm font-semibold hover:bg-mk-gold-dark transition-colors"
+              >
+                Ingresar
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
+      {/* Hero */}
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#DEEFE7] text-[#159A9C] text-sm font-medium mb-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-mk-blue-soft text-mk-blue text-sm font-medium mb-6">
               <CheckCircle className="w-4 h-4" />
-              Agente Virtual Inteligente
+              Tutor virtual de inglés
             </div>
-            
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#002333] leading-tight mb-6">
-              Aprende Inglés con un{' '}
-              <span className="text-[#159A9C]">Avatar 3D</span>{' '}
-              Inteligente
+
+            <h1 className="font-display text-4xl sm:text-5xl font-semibold text-mk-ink leading-tight mb-6">
+              Aprende inglés con un tutor{' '}
+              <span className="text-mk-blue">que te escucha</span>
             </h1>
-            
-            <p className="text-lg sm:text-xl text-[#B4BEC9] mb-10 leading-relaxed">
-              Practica tu pronunciación y mejora tu fluidez en inglés con nuestro 
-              agente virtual que te proporciona retroalimentación instantánea y personalizada.
+
+            <p className="text-lg text-mk-muted mb-10 leading-relaxed">
+              Practica tu pronunciación y mejora tu fluidez en inglés con un
+              tutor virtual que te da retroalimentación instantánea y
+              personalizada en cada sesión.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
                 to="/login"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[#159A9C] text-white font-semibold text-lg hover:bg-[#002333] transition-all duration-300 shadow-xl shadow-[#159A9C]/30 hover:shadow-[#002333]/30 hover:-translate-y-1"
+                className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-md bg-mk-gold text-mk-ink font-semibold hover:bg-mk-gold-dark transition-colors"
               >
-                Comenzar Ahora
-                <ArrowRight className="w-5 h-5" />
+                Comenzar ahora
+                <ArrowRight className="w-[18px] h-[18px]" />
               </Link>
               <a
                 href="#features"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[#DEEFE7] text-[#002333] font-semibold text-lg hover:bg-[#B4BEC9]/30 transition-all duration-300"
+                className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-md border border-mk-line bg-mk-surface text-mk-ink font-semibold hover:bg-mk-ice transition-colors"
               >
                 Conocer más
               </a>
             </div>
           </div>
 
-          {/* Hero Image/Illustration */}
-          <div className="mt-16 relative">
-            <div className="aspect-video max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-[#DEEFE7] via-[#FFFFFF] to-[#DEEFE7] border border-[#B4BEC9]/30 shadow-2xl overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#159A9C] to-[#002333] flex items-center justify-center animate-pulse">
-                    <Mic className="w-16 h-16 text-white" />
-                  </div>
-                  <p className="text-[#002333] font-medium text-lg">
-                    Avatar 3D Interactivo
-                  </p>
-                  <p className="text-[#B4BEC9] mt-2">
-                    Próximamente: Modelo 3D animado
-                  </p>
+          {/* Panel ilustrativo */}
+          <div className="mt-16 max-w-3xl mx-auto">
+            <div className="rounded-lg border border-mk-line bg-mk-surface overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-mk-line">
+                <div className="w-2 h-2 rounded-full bg-mk-line" />
+                <div className="w-2 h-2 rounded-full bg-mk-line" />
+                <div className="w-2 h-2 rounded-full bg-mk-line" />
+                <span className="ml-2 text-xs text-mk-muted">Sesión de práctica</span>
+              </div>
+              <div className="p-10 flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-md bg-mk-blue-soft text-mk-blue flex items-center justify-center mb-5">
+                  <MessageSquare className="w-8 h-8" />
                 </div>
+                <p className="font-medium text-mk-ink">
+                  Conversa en inglés, en voz o por texto
+                </p>
+                <p className="text-sm text-mk-muted mt-1.5 max-w-sm">
+                  Tu tutor responde al instante y corrige tu pronunciación en
+                  cada intento.
+                </p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-[#DEEFE7]/30">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#002333] mb-4">
-              Características Principales
+      {/* Características */}
+      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-mk-surface border-y border-mk-line">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="font-display text-3xl font-semibold text-mk-ink mb-3">
+              Características principales
             </h2>
-            <p className="text-lg text-[#B4BEC9] max-w-2xl mx-auto">
+            <p className="text-mk-muted max-w-xl mx-auto">
               Todo lo que necesitas para mejorar tu inglés de manera efectiva
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {features.map((feature, index) => (
               <div
                 key={index}
-                className="group p-6 rounded-2xl bg-white border border-[#B4BEC9]/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2"
+                className="p-5 rounded-lg border border-mk-line bg-mk-ice"
               >
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#159A9C] to-[#002333] flex items-center justify-center text-white mb-5 group-hover:scale-110 transition-transform">
+                <div className="w-11 h-11 rounded-md bg-mk-blue-soft text-mk-blue flex items-center justify-center mb-4">
                   {feature.icon}
                 </div>
-                <h3 className="text-lg font-semibold text-[#002333] mb-3">
+                <h3 className="font-semibold text-mk-ink mb-2">
                   {feature.title}
                 </h3>
-                <p className="text-[#B4BEC9] leading-relaxed">
+                <p className="text-sm text-mk-muted leading-relaxed">
                   {feature.description}
                 </p>
               </div>
@@ -180,41 +182,37 @@ export default function Home() {
         </div>
       </section>
 
-      {/* About Section */}
+      {/* Acerca de */}
       <section id="about" className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl sm:text-4xl font-bold text-[#002333] mb-6">
-                ¿Por qué elegir AVI?
+              <h2 className="font-display text-3xl font-semibold text-mk-ink mb-5">
+                ¿Por qué elegir MasterKey?
               </h2>
-              <p className="text-lg text-[#B4BEC9] mb-8 leading-relaxed">
-                AVI es un sistema innovador que utiliza inteligencia artificial para 
-                ayudarte a mejorar tu pronunciación en inglés. Nuestro agente virtual 
-                analiza tu voz y te proporciona retroalimentación detallada sobre 
+              <p className="text-mk-muted mb-8 leading-relaxed">
+                MasterKey es una academia que usa inteligencia artificial para
+                ayudarte a mejorar tu pronunciación en inglés. Tu tutor virtual
+                analiza tu voz y te da retroalimentación detallada sobre
                 pronunciación, fluidez, entonación y ritmo.
               </p>
-              <ul className="space-y-4">
+              <ul className="space-y-3">
                 {[
                   'Retroalimentación instantánea de pronunciación',
                   'Sesiones adaptadas a tu nivel',
                   'Seguimiento de progreso detallado',
-                  'Sin necesidad de servicios en la nube'
+                  'Docentes con reportes completos por estudiante'
                 ].map((item, index) => (
                   <li key={index} className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-[#159A9C] flex items-center justify-center flex-shrink-0">
-                      <CheckCircle className="w-4 h-4 text-white" />
-                    </div>
-                    <span className="text-[#002333]">{item}</span>
+                    <CheckCircle className="w-5 h-5 text-mk-blue shrink-0" />
+                    <span className="text-mk-ink">{item}</span>
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="relative">
-              <div className="aspect-square rounded-3xl bg-gradient-to-br from-[#159A9C]/10 to-[#002333]/10 border border-[#B4BEC9]/30 flex items-center justify-center">
-                <div className="w-48 h-48 rounded-full bg-gradient-to-br from-[#159A9C] to-[#002333] flex items-center justify-center">
-                  <Globe className="w-24 h-24 text-white" />
-                </div>
+            <div className="rounded-lg border border-mk-line bg-mk-blue-soft aspect-square flex items-center justify-center">
+              <div className="w-32 h-32 rounded-md bg-mk-blue flex items-center justify-center">
+                <BrandMark className="w-16 h-16" />
               </div>
             </div>
           </div>
@@ -222,16 +220,16 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-4 sm:px-6 lg:px-8 bg-[#002333]">
-        <div className="max-w-7xl mx-auto text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-[#159A9C] flex items-center justify-center">
-              <Globe className="w-5 h-5 text-white" />
+      <footer className="py-8 px-4 sm:px-6 lg:px-8 bg-mk-blue-dark">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="flex items-center justify-center gap-2.5 mb-3">
+            <div className="w-7 h-7 rounded-md bg-white/15 flex items-center justify-center">
+              <BrandMark className="w-4 h-4" />
             </div>
-            <span className="text-lg font-bold text-white">AVI</span>
+            <span className="font-display font-bold text-white">MasterKey</span>
           </div>
-          <p className="text-[#B4BEC9]">
-            © 2025 AVI - Agente Virtual Inteligente. Todos los derechos reservados.
+          <p className="text-sm text-white/60">
+            © 2026 MasterKey — Academia de Inglés. Todos los derechos reservados.
           </p>
         </div>
       </footer>

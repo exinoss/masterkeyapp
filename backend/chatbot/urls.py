@@ -6,6 +6,7 @@ from django.urls import path
 from .views import (
     AgenteVirtualListView, AgenteVirtualDetailView,
     SesionPracticaListView, SesionPracticaDetailView, FinalizarSesionView,
+    SiguienteFraseView,
     InteraccionAgenteView, RetroalimentacionListView,
     EstadisticasEstudianteView, ReporteDocenteView
 )
@@ -14,11 +15,12 @@ urlpatterns = [
     # Agentes Virtuales
     path('agentes/', AgenteVirtualListView.as_view(), name='agente_list'),
     path('agentes/<int:pk>/', AgenteVirtualDetailView.as_view(), name='agente_detail'),
-    
+
     # Sesiones de Práctica
     path('sesiones/', SesionPracticaListView.as_view(), name='sesion_list'),
     path('sesiones/<int:pk>/', SesionPracticaDetailView.as_view(), name='sesion_detail'),
     path('sesiones/<int:pk>/finalizar/', FinalizarSesionView.as_view(), name='sesion_finalizar'),
+    path('sesiones/<int:pk>/siguiente-frase/', SiguienteFraseView.as_view(), name='sesion_siguiente_frase'),
     
     # Interacción con el Agente
     path('interaccion/', InteraccionAgenteView.as_view(), name='interaccion'),

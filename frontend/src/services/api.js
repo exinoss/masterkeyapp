@@ -49,7 +49,7 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${access}`;
           return api(originalRequest);
         }
-      } catch (refreshError) {
+      } catch {
         // Si falla el refresh, limpiar tokens y redirigir a login
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
@@ -78,11 +78,16 @@ export const authService = {
   async registro(userData) {
     const response = await api.post('/auth/registro/', userData);
     const { tokens, usuario } = response.data;
-    
-    localStorage.setItem('access_token', tokens.access);
-    localStorage.setItem('refresh_token', tokens.refresh);
-    localStorage.setItem('user', JSON.stringify(usuario));
-    
+
+    // Un Docente recién registrado queda pendiente de aprobación: el
+    // backend no manda tokens en ese caso (ver AuthContext.registro /
+    // Login.jsx, que muestran el mensaje de "pendiente" en vez de loguear).
+    if (tokens) {
+      localStorage.setItem('access_token', tokens.access);
+      localStorage.setItem('refresh_token', tokens.refresh);
+      localStorage.setItem('user', JSON.stringify(usuario));
+    }
+
     return response.data;
   },
 
@@ -109,6 +114,11 @@ export const authService = {
     return response.data;
   },
 
+  async cambiarPassword(data) {
+    const response = await api.post('/auth/cambiar-password/', data);
+    return response.data;
+  },
+
   getUser() {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
@@ -121,9 +131,13 @@ export const authService = {
 
 // ==================== SESIONES ====================
 export const sesionesService = {
+  // GET /sesiones/ está paginado por DRF (PageNumberPagination, 20 por
+  // página) — devuelve {count, next, previous, results}. Se expone solo
+  // `results` porque hoy ningún caller pagina la UI; si el historial crece
+  // más allá de una página, este es el punto a extender.
   async listar() {
     const response = await api.get('/sesiones/');
-    return response.data;
+    return response.data.results;
   },
 
   async obtener(id) {
@@ -140,6 +154,17 @@ export const sesionesService = {
     const response = await api.post(`/sesiones/${id}/finalizar/`);
     return response.data;
   },
+
+  // Frase de práctica generada por DeepSeek (o el respaldo del backend si
+  // la IA no está disponible) — reemplaza la elección aleatoria local.
+  // `fraseAnterior` evita que DeepSeek repita la última frase practicada
+  // (tiende a hacerlo para combinaciones muy típicas de tema/nivel).
+  async siguienteFrase(id, fraseAnterior) {
+    const response = await api.post(`/sesiones/${id}/siguiente-frase/`, {
+      frase_anterior: fraseAnterior || undefined
+    });
+    return response.data;
+  },
 };
 
 // ==================== INTERACCIÓN ====================
@@ -152,11 +177,12 @@ export const interaccionService = {
 
 // ==================== RETROALIMENTACIÓN ====================
 export const retroalimentacionService = {
+  // También paginado por DRF — ver nota en sesionesService.listar().
   async listar(sesionId) {
     const response = await api.get('/retroalimentaciones/', {
       params: { sesion_id: sesionId },
     });
-    return response.data;
+    return response.data.results;
   },
 };
 
@@ -176,15 +202,50 @@ export const reportesService = {
   },
 };
 
-// ==================== ESTUDIANTES ====================
-export const estudiantesService = {
+// ==================== GESTIÓN DE USUARIOS (Administrador) ====================
+export const usuariosService = {
   async listar() {
-    const response = await api.get('/estudiantes/');
+    const response = await api.get('/usuarios/');
+    return response.data.results;
+  },
+
+  async activar(id) {
+    const response = await api.post(`/usuarios/${id}/activar/`);
     return response.data;
   },
 
-  async obtener(id) {
-    const response = await api.get(`/estudiantes/${id}/`);
+  async desactivar(id) {
+    const response = await api.post(`/usuarios/${id}/desactivar/`);
+    return response.data;
+  },
+};
+
+// ==================== CURSOS (código de acceso) ====================
+// Reemplaza la asignación manual Docente-Estudiante: el Docente crea un
+// curso con fechas y recibe un código; el Estudiante se une solo.
+export const cursosService = {
+  // Docente: sus propios cursos. Administrador: todos.
+  async listar() {
+    const response = await api.get('/cursos/');
+    return response.data.results;
+  },
+
+  // Docente: crea un curso ({ nombre, fecha_inicio, fecha_fin }); el
+  // backend genera el código y lo devuelve en la respuesta.
+  async crear(data) {
+    const response = await api.post('/cursos/', data);
+    return response.data;
+  },
+
+  // Estudiante: se une con el código.
+  async unirse(codigo) {
+    const response = await api.post('/cursos/unirse/', { codigo });
+    return response.data;
+  },
+
+  // Estudiante: su inscripción más reciente, o { inscripcion: null }.
+  async miCurso() {
+    const response = await api.get('/cursos/mi-curso/');
     return response.data;
   },
 };

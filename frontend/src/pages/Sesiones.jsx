@@ -2,8 +2,10 @@
  * Sesiones — MasterKey
  * Lista de sesiones, selección de tema y sesión activa con el avatar.
  */
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { sesionesService, interaccionService } from '../services/api';
+import { crearReconocimiento, hablar, presentarFrase } from '../utils/voz';
 import {
   MessageSquare,
   Plus,
@@ -46,41 +48,37 @@ export default function Sesiones() {
   const [currentPhrase, setCurrentPhrase] = useState(null);
   const [score, setScore] = useState(0);
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
+  const [cargandoFrase, setCargandoFrase] = useState(false);
+  const [errorVoz, setErrorVoz] = useState('');
   const conversationEndRef = useRef(null);
+  // Una sola instancia de SpeechRecognition reutilizada entre grabaciones
+  // (creada al tocar el micrófono por primera vez, no en el render).
+  const reconocimientoRef = useRef(null);
 
-  // Datos de demo para sesiones
-  const sesionesDemo = [
-    {
-      id: 1,
-      titulo: 'Conversación en restaurante',
-      tema: 'Vocabulario de comida',
-      fecha: '2024-12-09',
-      duracion: 15,
-      puntuacion: 85,
-      estado: 'completada',
-      nivel: 'B1'
-    },
-    {
-      id: 2,
-      titulo: 'Entrevista de trabajo',
-      tema: 'Inglés profesional',
-      fecha: '2024-12-08',
-      duracion: 22,
-      puntuacion: 72,
-      estado: 'completada',
-      nivel: 'B2'
-    },
-    {
-      id: 3,
-      titulo: 'En el aeropuerto',
-      tema: 'Viajes y turismo',
-      fecha: '2024-12-07',
-      duracion: 18,
-      puntuacion: 91,
-      estado: 'completada',
-      nivel: 'B1'
+  // Historial real de sesiones (GET /api/sesiones/)
+  const [sesiones, setSesiones] = useState([]);
+  const [loadingSesiones, setLoadingSesiones] = useState(true);
+  const [errorSesiones, setErrorSesiones] = useState('');
+
+  // Sin setState síncrono antes del primer `await`: así una llamada directa
+  // desde el useEffect de montaje no dispara set-state-in-effect. Quien
+  // necesite mostrar "Cargando…" de nuevo (p. ej. al volver de una sesión)
+  // resetea loading/error él mismo antes de llamar a esta función — ver
+  // `finalizarSesion`, que no es un efecto sino un manejador de evento.
+  const listarSesiones = useCallback(async () => {
+    try {
+      const data = await sesionesService.listar();
+      setSesiones(data);
+    } catch {
+      setErrorSesiones('No se pudo cargar el historial de sesiones.');
+    } finally {
+      setLoadingSesiones(false);
     }
-  ];
+  }, []);
+
+  useEffect(() => {
+    listarSesiones();
+  }, [listarSesiones]);
 
   // Temas disponibles para nueva sesión
   const temasDisponibles = [
@@ -128,21 +126,6 @@ export default function Sesiones() {
     }
   ];
 
-  // Frases de práctica de demo
-  const frasesDemo = [
-    { texto: 'Hello, how are you today?', traduccion: 'Hola, ¿cómo estás hoy?' },
-    { texto: 'Nice to meet you!', traduccion: '¡Mucho gusto en conocerte!' },
-    {
-      texto: 'Could you please repeat that?',
-      traduccion: '¿Podrías repetir eso por favor?'
-    },
-    {
-      texto: 'I would like to order a coffee.',
-      traduccion: 'Me gustaría pedir un café.'
-    },
-    { texto: 'Thank you very much!', traduccion: '¡Muchas gracias!' }
-  ];
-
   // Timer de sesión
   useEffect(() => {
     let interval;
@@ -166,6 +149,28 @@ export default function Sesiones() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Formatear fecha ISO del backend para el historial
+  const formatearFecha = (iso) => {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  // El backend (InteraccionAgenteView) usa un vocabulario de emociones más
+  // simple que el avatar (Avatar.jsx / GESTO_EMOCION): no conoce
+  // 'superFeliz' ni 'enojado', y usa 'pensativo'/'animando' donde el
+  // avatar espera 'triste'. Se traduce acá en vez de tocar el contrato
+  // del backend o inventarle estados que no calcula de verdad.
+  const mapearEmocionAvatar = (emocionBackend, puntuacion) => {
+    if (puntuacion >= 100) return 'superFeliz';
+    if (emocionBackend === 'feliz') return 'feliz';
+    if (emocionBackend === 'pensativo' || emocionBackend === 'animando') return 'triste';
+    return 'neutral';
+  };
+
   // Color del indicador de puntuación
   const estiloPuntuacion = (valor) => {
     if (valor >= 85) return 'bg-mk-success-bg text-mk-success';
@@ -173,131 +178,239 @@ export default function Sesiones() {
     return 'bg-mk-error-bg text-mk-error';
   };
 
-  // Iniciar nueva sesión
-  const iniciarSesion = (tema) => {
-    setSesionActiva({
-      id: Date.now(),
-      tema: tema.nombre,
-      nivel: tema.nivel,
-      inicio: new Date()
-    });
-    setView('session');
-    setSessionTime(0);
-    setScore(0);
-    setConversation([]);
+  // Iniciar nueva sesión (POST /api/sesiones/)
+  const iniciarSesion = async (tema) => {
     setShowNewSessionModal(false);
 
-    // Mensaje inicial del avatar
-    setTimeout(() => {
-      setAvatarEmotion('feliz');
-      setAvatarMessage(
-        `¡Hola${user?.nombre ? ', ' + user.nombre : ''}! Soy tu tutor de MasterKey. ¿Listo para practicar?`
-      );
-      setIsSpeaking(true);
+    try {
+      const sesion = await sesionesService.crear({
+        titulo: tema.nombre,
+        tema_practica: tema.nombre,
+        nivel_dificultad: tema.nivel
+      });
 
-      setTimeout(() => {
+      setSesionActiva(sesion);
+      setView('session');
+      setSessionTime(0);
+      setScore(0);
+      setConversation([]);
+
+      // Mensaje inicial del avatar — se lee en voz alta también (es texto
+      // 100% en español, sin mezcla con inglés, así que alcanza con una
+      // sola llamada a `hablar`, no hace falta partirlo como
+      // `presentarFrase`). Se espera a que termine de hablar de verdad
+      // antes de seguir, mismo motivo que en el resto del flujo.
+      setTimeout(async () => {
+        const saludo = `¡Hola${user?.nombre ? ', ' + user.nombre : ''}! Soy tu tutor de MasterKey. ¿Listo para practicar?`;
+        setAvatarEmotion('feliz');
+        setAvatarMessage(saludo);
+        setIsSpeaking(true);
+
+        if (!isMuted) {
+          await hablar(saludo, { lang: 'es-ES' });
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
         setIsSpeaking(false);
         setAvatarMessage('');
-        mostrarSiguienteFrase();
-      }, 3000);
-    }, 1000);
+        mostrarSiguienteFrase(sesion.id);
+      }, 1000);
+    } catch (err) {
+      console.error('No se pudo iniciar la sesión', err);
+      setErrorSesiones('No se pudo iniciar la sesión. Intenta de nuevo.');
+    }
   };
 
-  // Mostrar siguiente frase para practicar
-  const mostrarSiguienteFrase = () => {
-    const randomFrase = frasesDemo[Math.floor(Math.random() * frasesDemo.length)];
-    setCurrentPhrase(randomFrase);
+  // Pedir la siguiente frase de práctica (generada por DeepSeek en el
+  // backend, o su respaldo si la IA no está disponible — ver
+  // POST /api/sesiones/<id>/siguiente-frase/) y leerla en voz alta.
+  //
+  // Recibe el id de sesión por parámetro (con `sesionActiva?.id` como
+  // default) en vez de leer `sesionActiva` únicamente por closure: se
+  // llama desde dentro de un setTimeout anidado en `iniciarSesion`, cuyo
+  // closure quedó fijado en el render donde `sesionActiva` todavía era
+  // null (la actualización de estado llega recién en el próximo render) —
+  // sin el parámetro explícito, esa llamada se cortaba en silencio.
+  const mostrarSiguienteFrase = async (sesionId = sesionActiva?.id) => {
+    if (!sesionId) return;
+
+    setCargandoFrase(true);
+    try {
+      // Se manda la frase que estaba mostrándose (si había) para que
+      // DeepSeek no la repita — sin esto tiende a devolver la misma
+      // frase "canónica" para combinaciones típicas de tema/nivel.
+      const frase = await sesionesService.siguienteFrase(sesionId, currentPhrase?.texto);
+      setCurrentPhrase(frase);
+      setAvatarEmotion('neutral');
+      setAvatarMessage(`Repite: "${frase.texto}"`);
+      setIsSpeaking(true);
+      if (!isMuted) {
+        await presentarFrase(frase.texto);
+        setIsSpeaking(false);
+      } else {
+        setTimeout(() => setIsSpeaking(false), 1500);
+      }
+    } catch (err) {
+      console.error('No se pudo generar la siguiente frase', err);
+    } finally {
+      setCargandoFrase(false);
+    }
+  };
+
+  // Vuelve a mostrar y a leer la MISMA frase, sin pedir una nueva al
+  // backend — se usa cuando la puntuación fue baja (`necesita_repetir`) y
+  // hay que reintentar en vez de avanzar. Ver `enviarRespuesta`.
+  const repetirFrase = async () => {
+    if (!currentPhrase) return;
     setAvatarEmotion('neutral');
-    setAvatarMessage(`Repite: "${randomFrase.texto}"`);
+    setAvatarMessage(`Repite: "${currentPhrase.texto}"`);
     setIsSpeaking(true);
-
-    setTimeout(() => {
+    if (!isMuted) {
+      await presentarFrase(currentPhrase.texto, 'Inténtalo de nuevo:');
       setIsSpeaking(false);
-    }, 2000);
+    } else {
+      setTimeout(() => setIsSpeaking(false), 1500);
+    }
   };
 
-  // Simular envío de respuesta del usuario
-  const enviarRespuesta = () => {
-    if (!userInput.trim()) return;
+  // Enviar respuesta del usuario al agente (POST /api/interaccion/).
+  // Acepta el texto por parámetro (usado al transcribir por voz, para
+  // enviarlo directo sin esperar a que se actualice el estado `userInput`
+  // — mismo motivo que `mostrarSiguienteFrase(sesionId)`: un valor leído
+  // por closure en vez de por parámetro puede llegar desactualizado).
+  const enviarRespuesta = async (textoOverride) => {
+    const textoEnviado = (textoOverride ?? userInput).trim();
+    if (!textoEnviado || !sesionActiva) return;
+
+    setUserInput('');
 
     // Agregar mensaje del usuario a la conversación
     setConversation((prev) => [
       ...prev,
       {
         tipo: 'usuario',
-        texto: userInput,
+        texto: textoEnviado,
         timestamp: new Date()
       }
     ]);
 
-    // Simular evaluación (rango amplio a propósito: con el 70-100 anterior
-    // la puntuación nunca bajaba de 70 y el estado "triste" del avatar
-    // jamás se disparaba en la demo)
-    const puntuacion = Math.floor(Math.random() * 61) + 40; // 40-100
-    setScore((prev) => Math.round((prev + puntuacion) / 2) || puntuacion);
+    try {
+      const resultado = await interaccionService.enviar({
+        sesion_id: sesionActiva.id,
+        texto_estudiante: textoEnviado,
+        texto_esperado: currentPhrase?.texto || ''
+      });
 
-    // Respuesta del avatar
-    setTimeout(() => {
-      let respuesta = '';
-      let emocion = 'neutral';
-
-      if (puntuacion === 100) {
-        respuesta = '¡Perfecto! Pronunciación exacta, 100%!';
-        emocion = 'superFeliz';
-      } else if (puntuacion >= 80) {
-        respuesta = '¡Muy bien! Good job, keep practicing!';
-        emocion = 'feliz';
-      } else {
-        respuesta = 'No salió del todo bien. Intentemos de nuevo.';
-        emocion = 'triste';
-      }
+      const puntuacion = Math.round(resultado.puntuacion_general);
+      setScore((prev) => Math.round((prev + puntuacion) / 2) || puntuacion);
 
       setConversation((prev) => [
         ...prev,
         {
           tipo: 'agente',
-          texto: respuesta,
-          puntuacion: puntuacion,
+          texto: resultado.respuesta_texto,
+          puntuacion,
           timestamp: new Date()
         }
       ]);
 
-      setAvatarEmotion(emocion);
-      setAvatarMessage(respuesta);
+      setAvatarEmotion(mapearEmocionAvatar(resultado.emocion_avatar, puntuacion));
+      setAvatarMessage(resultado.respuesta_texto);
       setIsSpeaking(true);
 
-      setTimeout(() => {
-        setIsSpeaking(false);
-        setAvatarMessage('');
-        mostrarSiguienteFrase();
-      }, 3000);
-    }, 1000);
+      // Se espera a que termine de hablar de verdad (no un tiempo fijo
+      // adivinado) antes de seguir — así la retroalimentación nunca se
+      // corta a la mitad.
+      if (!isMuted) {
+        // La retroalimentación ahora la genera DeepSeek íntegramente en
+        // español (ver chatbot/ai.py) — se lee con voz de español, no la
+        // de inglés que usa la frase de práctica.
+        await hablar(resultado.respuesta_texto, { lang: 'es-ES' });
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+      setIsSpeaking(false);
+      setAvatarMessage('');
 
-    setUserInput('');
-  };
-
-  // Simular grabación de voz
-  const toggleRecording = () => {
-    setIsRecording(!isRecording);
-
-    if (!isRecording) {
-      // Simular transcripción después de 2 segundos
-      setTimeout(() => {
-        if (currentPhrase) {
-          setUserInput(currentPhrase.texto);
+      // `necesita_repetir` ya lo calcula el backend con el mismo umbral
+      // (puntuación general < 70): si la pronunciación no alcanzó, se
+      // reintenta la MISMA frase en vez de avanzar a una nueva.
+      if (resultado.necesita_repetir) {
+        await repetirFrase();
+      } else {
+        await mostrarSiguienteFrase(sesionActiva.id);
+      }
+    } catch (err) {
+      console.error('No se pudo procesar la interacción', err);
+      setConversation((prev) => [
+        ...prev,
+        {
+          tipo: 'agente',
+          texto: 'No pude procesar tu respuesta. Intenta de nuevo.',
+          timestamp: new Date()
         }
-        setIsRecording(false);
-      }, 2000);
+      ]);
     }
   };
 
-  // Finalizar sesión
-  const finalizarSesion = () => {
+  // Grabar y transcribir la voz del estudiante (Web Speech API — el audio
+  // no sale del navegador, solo el texto transcrito llega al backend).
+  const toggleRecording = () => {
+    if (isRecording) {
+      reconocimientoRef.current?.stop();
+      return;
+    }
+
+    if (!reconocimientoRef.current) {
+      reconocimientoRef.current = crearReconocimiento();
+    }
+    const reconocimiento = reconocimientoRef.current;
+
+    if (!reconocimiento) {
+      setErrorVoz(
+        'Tu navegador no soporta reconocimiento de voz. Probá con Chrome o Edge, o escribí tu respuesta.'
+      );
+      return;
+    }
+
+    setErrorVoz('');
+    reconocimiento.onresult = (event) => {
+      const texto = event.results[0][0].transcript;
+      // Foco principal: se envía apenas se transcribe, sin pasar por el
+      // botón de enviar (se le pasa el texto directo, no por el estado
+      // `userInput`, para no depender de que el re-render ya haya corrido).
+      enviarRespuesta(texto);
+    };
+    reconocimiento.onerror = () => {
+      setIsRecording(false);
+      setErrorVoz('No se pudo escuchar. Revisá el permiso del micrófono e intentá de nuevo.');
+    };
+    reconocimiento.onend = () => {
+      setIsRecording(false);
+    };
+
+    setIsRecording(true);
+    reconocimiento.start();
+  };
+
+  // Finalizar sesión (POST /api/sesiones/<id>/finalizar/)
+  const finalizarSesion = async () => {
+    if (sesionActiva) {
+      try {
+        await sesionesService.finalizar(sesionActiva.id);
+      } catch (err) {
+        console.error('No se pudo finalizar la sesión en el servidor', err);
+      }
+    }
+
     setSesionActiva(null);
     setView('list');
     setCurrentPhrase(null);
     setConversation([]);
     setAvatarMessage('');
+    setLoadingSesiones(true);
+    setErrorSesiones('');
+    listarSesiones();
   };
 
   /* ==========================================================
@@ -334,41 +447,54 @@ export default function Sesiones() {
             </h3>
           </div>
 
-          <ul className="divide-y divide-mk-line">
-            {sesionesDemo.map((sesion) => (
-              <li key={sesion.id}>
-                <button className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-mk-ice transition-colors group">
-                  <div className="w-10 h-10 rounded-md bg-mk-blue-soft text-mk-blue flex items-center justify-center shrink-0">
-                    <MessageSquare className="w-5 h-5" />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-mk-ink truncate">
-                        {sesion.titulo}
-                      </h4>
-                      <span className="shrink-0 px-1.5 py-0.5 rounded border border-mk-line text-[11px] font-semibold text-mk-muted">
-                        {sesion.nivel}
-                      </span>
+          {loadingSesiones ? (
+            <p className="px-5 py-8 text-sm text-mk-muted text-center">Cargando historial…</p>
+          ) : errorSesiones ? (
+            <p className="px-5 py-8 text-sm text-mk-error text-center">{errorSesiones}</p>
+          ) : sesiones.length === 0 ? (
+            <p className="px-5 py-8 text-sm text-mk-muted text-center">
+              Todavía no tienes sesiones. Crea la primera con "Nueva sesión".
+            </p>
+          ) : (
+            <ul className="divide-y divide-mk-line">
+              {sesiones.map((sesion) => (
+                <li key={sesion.id}>
+                  <button className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-mk-ice transition-colors group">
+                    <div className="w-10 h-10 rounded-md bg-mk-blue-soft text-mk-blue flex items-center justify-center shrink-0">
+                      <MessageSquare className="w-5 h-5" />
                     </div>
-                    <p className="text-sm text-mk-muted truncate">
-                      {sesion.tema} · {sesion.duracion} min · {sesion.fecha}
-                    </p>
-                  </div>
 
-                  <span
-                    className={`shrink-0 px-2.5 py-1 rounded-md text-sm font-semibold tabular-nums ${estiloPuntuacion(
-                      sesion.puntuacion
-                    )}`}
-                  >
-                    {sesion.puntuacion}%
-                  </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-mk-ink truncate">
+                          {sesion.titulo}
+                        </h4>
+                        {sesion.nivel_dificultad && (
+                          <span className="shrink-0 px-1.5 py-0.5 rounded border border-mk-line text-[11px] font-semibold text-mk-muted">
+                            {sesion.nivel_dificultad}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-mk-muted truncate">
+                        {sesion.tema_practica} · {sesion.duracion_minutos} min ·{' '}
+                        {formatearFecha(sesion.fecha_inicio)}
+                      </p>
+                    </div>
 
-                  <ChevronRight className="w-4 h-4 shrink-0 text-mk-line group-hover:text-mk-blue transition-colors" />
-                </button>
-              </li>
-            ))}
-          </ul>
+                    <span
+                      className={`shrink-0 px-2.5 py-1 rounded-md text-sm font-semibold tabular-nums ${estiloPuntuacion(
+                        sesion.puntuacion_sesion
+                      )}`}
+                    >
+                      {Math.round(sesion.puntuacion_sesion)}%
+                    </span>
+
+                    <ChevronRight className="w-4 h-4 shrink-0 text-mk-line group-hover:text-mk-blue transition-colors" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         {/* Modal: nueva sesión */}
@@ -452,10 +578,10 @@ export default function Sesiones() {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="font-semibold text-mk-ink truncate">
-                  {sesionActiva?.tema}
+                  {sesionActiva?.tema_practica}
                 </h2>
                 <span className="shrink-0 px-1.5 py-0.5 rounded border border-mk-line text-[11px] font-semibold text-mk-muted">
-                  {sesionActiva?.nivel}
+                  {sesionActiva?.nivel_dificultad}
                 </span>
               </div>
               <p className="text-[11px] uppercase tracking-[0.06em] text-mk-muted">
@@ -539,7 +665,7 @@ export default function Sesiones() {
         {/* Conversación */}
         <div className="bg-mk-surface border border-mk-line rounded-lg flex flex-col overflow-hidden">
           {/* Frase a practicar */}
-          {currentPhrase && (
+          {currentPhrase ? (
             <div className="px-5 py-4 bg-mk-blue-soft border-b border-mk-line">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-mk-blue">
                 Repite esta frase
@@ -551,6 +677,12 @@ export default function Sesiones() {
                 {currentPhrase.traduccion}
               </p>
             </div>
+          ) : (
+            cargandoFrase && (
+              <div className="px-5 py-4 bg-mk-blue-soft border-b border-mk-line">
+                <p className="text-sm text-mk-muted">Generando frase…</p>
+              </div>
+            )
           )}
 
           {/* Mensajes */}
@@ -599,48 +731,61 @@ export default function Sesiones() {
           </div>
 
           {/* Entrada */}
-          <div className="p-3 border-t border-mk-line">
-            <div className="flex items-center gap-2">
+          <div className="p-4 border-t border-mk-line space-y-3">
+            {errorVoz && (
+              <p className="text-xs text-mk-error text-center animate-fadeIn">{errorVoz}</p>
+            )}
+
+            {/* Foco principal: grabar. Al transcribir se envía solo, sin
+                pasar por el botón de enviar (ver toggleRecording). */}
+            <div className="flex flex-col items-center gap-1.5">
               <button
                 onClick={toggleRecording}
-                className={`w-11 h-11 shrink-0 rounded-md flex items-center justify-center transition-colors ${
+                className={`w-20 h-20 rounded-full flex items-center justify-center shadow-sm transition-all ${
                   isRecording
-                    ? 'bg-mk-error-bg text-mk-error border border-mk-error animate-pulse'
-                    : 'border border-mk-line text-mk-muted hover:bg-mk-ice hover:text-mk-ink'
+                    ? 'bg-mk-error text-white scale-105 animate-pulse'
+                    : 'bg-mk-gold text-mk-ink hover:bg-mk-gold-dark'
                 }`}
                 title={isRecording ? 'Detener grabación' : 'Grabar respuesta'}
               >
                 {isRecording ? (
-                  <MicOff className="w-[18px] h-[18px]" />
+                  <MicOff className="w-8 h-8" />
                 ) : (
-                  <Mic className="w-[18px] h-[18px]" />
+                  <Mic className="w-8 h-8" />
                 )}
               </button>
+              <p className="text-xs font-medium text-mk-muted">
+                {isRecording ? 'Escuchando… tocá para detener' : 'Tocá para hablar'}
+              </p>
+            </div>
 
+            {/* Alternativa manual: escribir en vez de hablar */}
+            <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && enviarRespuesta()}
-                placeholder="Escribe tu respuesta o usa el micrófono"
-                className="flex-1 min-w-0 h-11 px-3.5 rounded-md border border-mk-line bg-mk-surface text-sm text-mk-ink placeholder:text-mk-muted focus:border-mk-blue focus:ring-2 focus:ring-mk-blue/15 outline-none transition-colors"
+                placeholder="O escribí tu respuesta"
+                className="flex-1 min-w-0 h-10 px-3.5 rounded-md border border-mk-line bg-mk-surface text-sm text-mk-ink placeholder:text-mk-muted focus:border-mk-blue focus:ring-2 focus:ring-mk-blue/15 outline-none transition-colors"
               />
 
               <button
-                onClick={enviarRespuesta}
+                onClick={() => enviarRespuesta()}
                 disabled={!userInput.trim()}
-                className="w-11 h-11 shrink-0 rounded-md bg-mk-gold text-mk-ink flex items-center justify-center hover:bg-mk-gold-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-mk-gold"
+                className="w-10 h-10 shrink-0 rounded-md bg-mk-ice text-mk-ink flex items-center justify-center hover:bg-mk-line/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Enviar respuesta"
               >
-                <Send className="w-[18px] h-[18px]" />
+                <Send className="w-4 h-4" />
               </button>
 
               <button
-                onClick={mostrarSiguienteFrase}
-                className="w-11 h-11 shrink-0 rounded-md border border-mk-line flex items-center justify-center text-mk-muted hover:bg-mk-ice hover:text-mk-ink transition-colors"
+                onClick={() => mostrarSiguienteFrase()}
+                disabled={cargandoFrase}
+                className="w-10 h-10 shrink-0 rounded-md border border-mk-line flex items-center justify-center text-mk-muted hover:bg-mk-ice hover:text-mk-ink transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Siguiente frase"
               >
-                <RefreshCw className="w-[18px] h-[18px]" />
+                <RefreshCw className={`w-4 h-4 ${cargandoFrase ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>
