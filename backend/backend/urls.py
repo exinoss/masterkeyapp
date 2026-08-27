@@ -2,13 +2,21 @@
 URL configuration for backend project - AVI (Agente Virtual Inteligente).
 """
 from django.contrib import admin
+from django.http import HttpResponse
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+
+def health(request):
+    """Usado por el healthcheck del contenedor Docker — sin auth, sin DB."""
+    return HttpResponse('ok')
+
+
 urlpatterns = [
+    path('health', health),
     path('admin/', admin.site.urls),
-    
+
     # API endpoints
     path('api/', include('users.urls')),
     path('api/', include('chatbot.urls')),

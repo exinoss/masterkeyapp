@@ -1,0 +1,85 @@
+# docker-compose.yml — MasterKey Backend
+
+services:
+  masterkey_backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: masterkey-backend:local
+    container_name: masterkey_backend
+    restart: unless-stopped
+
+    # ── Variables de entorno ─────────────────────────────────
+    # .env real vive fuera de git, ver .env.example
+    env_file:
+      - .env
+
+    # ── Healthcheck ──────────────────────────────────────────
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    # ── Límites de recursos ──────────────────────────────────
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+    # ── Red aislada ──────────────────────────────────────────
+    networks:
+      - masterkey_net
+
+    # ── Logging ──────────────────────────────────────────────
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  nginx_ssl:
+    container_name: nginx_ssl_masterkey
+    image: masterkey-nginx:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: nginx_conf
+    tty: true
+    ports:
+      # TODO: confirmar con el servidor que este puerto host esté libre
+      - "9616:443"
+    volumes:
+      - nginxfiles:/home/app/nginx
+    command: >
+      sh -c "
+        mkdir -p /var/www/html /etc/nginx/logs /ssl &&
+        cp -r /home/app/nginx/html/. /var/www/html/ 2>/dev/null || true &&
+        cp -r /home/app/nginx/logs/. /etc/nginx/logs/ 2>/dev/null || true &&
+        cp -r /home/app/nginx/ssl/. /ssl/ 2>/dev/null || true &&
+        nginx -g 'daemon off;'
+      "
+    restart: always
+    depends_on:
+      - masterkey_backend
+    networks:
+      - masterkey_net
+
+volumes:
+  # Igual que en RememberGo: el volumen externo trae los certificados SSL
+  # reales (ssl/) y opcionalmente html/logs. Se crea y se llena a mano en
+  # el servidor UNA sola vez, no lo maneja este compose.
+  nginxfiles:
+    external: true
+    name: masterkey_nginxfiles
+
+networks:
+  masterkey_net:
+    driver: bridge

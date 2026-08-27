@@ -20,10 +20,25 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# Será False en Render a menos que explícitamente pongas DEBUG = True
+# Será False en el servidor a menos que explícitamente pongas DEBUG = True
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+# En el servidor (detrás de Nginx) se define en .env, ej:
+# ALLOWED_HOSTS=aplicaciones.uteq.edu.ec,localhost
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '*').split(',') if h.strip()]
+
+# Nginx termina el TLS y nos manda el pedido por HTTP interno con este header
+# — sin esto Django no sabe que la conexión real es https (cookies "secure",
+# redirects, etc. se comportan mal).
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
+]
+
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # DeepSeek (chatbot.ai): genera las frases de práctica y evalúa las
 # interacciones de las sesiones. Sin key configurada, ese código cae a un
@@ -151,15 +166,16 @@ SIMPLE_JWT = {
 }
 
 
-# CORS Configuration - Permitir frontend React/Vite y Ngrok
-CORS_ALLOW_ALL_ORIGINS = True
-
-# CORS_ALLOWED_ORIGINS = [
-#     'http://localhost:5173',  # Vite dev server
-#     'http://localhost:3000',  # React dev server
-#     'http://127.0.0.1:5173',
-#     'http://127.0.0.1:3000',
-# ]
+# CORS Configuration
+# En el servidor se define en .env con el dominio real de Vercel, ej:
+# CORS_ALLOWED_ORIGINS=https://masterkey.vercel.app
+# Sin configurar (desarrollo local) se deja pasar todo para no trabar el dev.
+_cors_env = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if _cors_env:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_env.split(',') if o.strip()]
+    CORS_ALLOW_ALL_ORIGINS = False
+else:
+    CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOW_CREDENTIALS = True
 
