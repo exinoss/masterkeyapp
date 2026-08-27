@@ -1,8 +1,11 @@
 # Dockerfile — MasterKey Backend
-# Tres targets independientes:
-#   builder     -> instala dependencias con uv (no se publica)
-#   runtime     -> imagen final del backend Django (Gunicorn)
-#   nginx_conf  -> imagen de Nginx con nginx.conf ya cargado
+# Dos targets:
+#   builder  -> instala dependencias con uv (no se publica)
+#   runtime  -> imagen final del backend Django (Gunicorn)
+#
+# El servicio de Nginx no se construye acá — usa la imagen "nginx" tal cual
+# y monta nginx.conf directo (ver docker-compose.yml), igual que el resto
+# de los proyectos en este servidor.
 
 # ---------- builder ----------
 FROM python:3.12-slim AS builder
@@ -40,12 +43,3 @@ EXPOSE 8000
 # collectstatic y migrate corren al arrancar el contenedor (no en el build)
 # para no necesitar SECRET_KEY/DB reales durante el `docker build`.
 CMD ["sh", "-c", "python manage.py collectstatic --no-input && python manage.py migrate --no-input && gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60"]
-
-# ---------- nginx_conf ----------
-FROM nginx:alpine AS nginx_conf
-
-# El compose usa `sh -c` (alpine no trae bash) para copiar lo que venga en
-# el volumen externo /home/app/nginx (html/logs/ssl) a las rutas reales que
-# usa nginx.conf.
-COPY nginx.conf /etc/nginx/nginx.conf
-RUN mkdir -p /home/app/nginx/html /home/app/nginx/logs /home/app/nginx/ssl

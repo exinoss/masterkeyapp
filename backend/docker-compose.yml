@@ -47,23 +47,22 @@ services:
 
   nginx_ssl:
     container_name: nginx_ssl_masterkey
-    image: masterkey-nginx:local
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: nginx_conf
+    image: nginx
     tty: true
     ports:
       # TODO: confirmar con el servidor que este puerto host esté libre
       - "9616:443"
     volumes:
       - nginxfiles:/home/app/nginx
+      # nginx.conf real del repo, montado tal cual — no se reconstruye
+      # ninguna imagen para esto, igual que RememberGo/webtestmathuteq/apiescuela.
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     command: >
-      sh -c "
+      bash -c "
         mkdir -p /var/www/html /etc/nginx/logs /ssl &&
         cp -r /home/app/nginx/html/. /var/www/html/ 2>/dev/null || true &&
         cp -r /home/app/nginx/logs/. /etc/nginx/logs/ 2>/dev/null || true &&
-        cp -r /home/app/nginx/ssl/. /ssl/ 2>/dev/null || true &&
+        cp -r /home/app/nginx/ssl/. /ssl/ &&
         nginx -g 'daemon off;'
       "
     restart: always
@@ -73,12 +72,12 @@ services:
       - masterkey_net
 
 volumes:
-  # Igual que en RememberGo: el volumen externo trae los certificados SSL
-  # reales (ssl/) y opcionalmente html/logs. Se crea y se llena a mano en
-  # el servidor UNA sola vez, no lo maneja este compose.
+  # OJO: este es el MISMO volumen "nginxfiles" que ya usan RememberGo,
+  # webtestmathuteq y apiescuela en este servidor — no es uno propio de
+  # MasterKey. Ya existe y ya trae el cert institucional (ssl/), por eso
+  # no lleva "name:" propio: apunta directo al que ya está ahí.
   nginxfiles:
     external: true
-    name: masterkey_nginxfiles
 
 networks:
   masterkey_net:
