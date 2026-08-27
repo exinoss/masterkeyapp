@@ -35,6 +35,11 @@ RUN useradd --create-home --uid 1000 app
 WORKDIR /app
 COPY --from=builder --chown=app:app /app /app
 
+# WORKDIR crea /app como root ANTES del COPY de arriba, y --chown solo
+# aplica al contenido copiado, no siempre al directorio /app preexistente
+# — sin esto, collectstatic no puede crear /app/staticfiles en runtime.
+RUN mkdir -p /app/staticfiles /app/media && chown -R app:app /app
+
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
