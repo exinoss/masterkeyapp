@@ -13,9 +13,9 @@
 # ---------- builder ----------
 FROM python:3.12-slim AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Ninguna dependencia de pyproject.toml necesita compilar nada (psycopg2
+# usa el -binary, cryptography/bcrypt/cffi ya traen wheels manylinux) —
+# nada de build-essential, solo quema minutos en cada build.
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
